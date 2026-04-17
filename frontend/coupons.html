@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>الكوبونات — Member Plus</title>
+    <title>الهدية الشهرية — Member Plus</title>
     <link rel="stylesheet" href="styles.css">
     <style>
         .coupon-tabs { display: flex; gap: var(--space-2); margin-bottom: var(--space-5); border-bottom: 1px solid var(--color-border); padding-bottom: var(--space-3); }
@@ -46,7 +46,7 @@
                 <a class="sidebar__link" href="dashboard.html"><span class="icon">📊</span> لوحة التحكم</a>
                 <a class="sidebar__link" href="plans.html"><span class="icon">🏷️</span> إعدادات العضوية</a>
                 <a class="sidebar__link" href="benefits.html"><span class="icon">✨</span> المزايا</a>
-                <a class="sidebar__link" href="coupons.html" aria-current="page"><span class="icon">🎁</span> الكوبونات</a>
+                <a class="sidebar__link" href="coupons.html" aria-current="page"><span class="icon">🎁</span> الهدية الشهرية</a>
                 <a class="sidebar__link" href="members.html"><span class="icon">👥</span> الأعضاء</a>
                 <a class="sidebar__link" href="settings.html"><span class="icon">⚙️</span> الإعدادات</a>
             </nav>
@@ -60,7 +60,7 @@
             <header class="app-topbar">
                 <div style="display:flex;align-items:center;gap:var(--space-3);">
                     <button class="sidebar__toggle" id="sidebar-toggle" type="button">☰</button>
-                    <span class="app-topbar__title">الكوبونات</span>
+                    <span class="app-topbar__title">الهدية الشهرية</span>
                 </div>
                 <button class="btn btn--primary" id="create-btn" type="button" style="font-size:var(--font-size-sm);">+ إنشاء كوبون</button>
             </header>
@@ -168,12 +168,22 @@
 
         function show(w) { ['state-loading','state-error','state-blocked','state-empty','state-data'].forEach(id => { document.getElementById(id).hidden = id !== w; }); }
 
-        // Mock coupon data
+        // Month names in Arabic
+        const MONTHS_AR = {
+            '01':'يناير','02':'فبراير','03':'مارس','04':'أبريل','05':'مايو','06':'يونيو',
+            '07':'يوليو','08':'أغسطس','09':'سبتمبر','10':'أكتوبر','11':'نوفمبر','12':'ديسمبر',
+        };
+        function monthLabel(m) {
+            const parts = m.split('-');
+            return MONTHS_AR[parts[1]] + ' ' + parts[0];
+        }
+
+        // Mock data — each gift is tied to a specific month with redemption stats
         const mockCoupons = [
-            {id: 'c1', type: 'pct_all', value: 25, desc_ar: 'خصم 25% على الكل', desc_en: '25% off everything', code: 'GIFT-A8F2K3', status: 'active', month: '2026-04', expires: '2026-04-30'},
-            {id: 'c2', type: 'fixed', value: 50, desc_ar: 'خصم 50 ر.س', desc_en: '50 SAR off', code: 'GIFT-B7X1M9', status: 'scheduled', month: '2026-05', expires: '2026-05-31'},
-            {id: 'c3', type: 'pct_category', value: 15, desc_ar: 'خصم 15% على الإكسسوارات', desc_en: '15% off accessories', code: 'GIFT-C4P2Q7', status: 'used', month: '2026-03', expires: '2026-03-31'},
-            {id: 'c4', type: 'pct_all', value: 20, desc_ar: 'خصم 20% على الكل', desc_en: '20% off everything', code: 'GIFT-D9R3S1', status: 'expired', month: '2026-02', expires: '2026-02-28'},
+            {id: 'c1', month: '2026-04', desc_ar: 'خصم 25% على جميع المنتجات', type: 'pct_all', value: 25, status: 'active', expires: '2026-04-30', total_eligible: 22, total_used: 8},
+            {id: 'c2', month: '2026-05', desc_ar: 'خصم 50 ر.س على الطلبات فوق 200 ر.س', type: 'fixed', value: 50, status: 'scheduled', expires: '2026-05-31', total_eligible: 22, total_used: 0},
+            {id: 'c3', month: '2026-03', desc_ar: 'خصم 15% على الإكسسوارات', type: 'pct_category', value: 15, status: 'expired', expires: '2026-03-31', total_eligible: 18, total_used: 12},
+            {id: 'c4', month: '2026-02', desc_ar: 'خصم 20% على الكل', type: 'pct_all', value: 20, status: 'expired', expires: '2026-02-28', total_eligible: 15, total_used: 9},
         ];
 
         async function load() {
@@ -211,19 +221,36 @@
 
             const statusLabels = {active: 'نشط', scheduled: 'مجدول', used: 'مستخدم', expired: 'منتهي', draft: 'مسودة'};
             const statusClasses = {active: 'coupon-status--active', scheduled: 'coupon-status--draft', used: 'coupon-status--used', expired: 'coupon-status--expired', draft: 'coupon-status--draft'};
-            const typeLabels = {pct_all: 'نسبة على الكل', pct_category: 'نسبة على فئة', fixed: 'قيمة ثابتة'};
 
-            container.innerHTML = filtered.map(c => `
-                <div class="coupon-list-item">
-                    <div class="coupon-list-item__icon">🎁</div>
-                    <div class="coupon-list-item__body">
-                        <div class="coupon-list-item__name">${c.desc_ar}</div>
-                        <div class="coupon-list-item__meta">${typeLabels[c.type] || c.type} · ${c.month} · ينتهي ${c.expires}</div>
+            container.innerHTML = filtered.map(c => {
+                const usagePct = c.total_eligible > 0 ? Math.round((c.total_used / c.total_eligible) * 100) : 0;
+                return `
+                <div class="coupon-list-item" style="flex-wrap:wrap;">
+                    <div style="display:flex;align-items:center;gap:var(--space-3);width:100%;margin-bottom:var(--space-3);">
+                        <div class="coupon-list-item__icon">🎁</div>
+                        <div style="flex:1;">
+                            <div style="font-family:var(--font-display);font-size:var(--font-size-lg);font-weight:600;">هدية ${monthLabel(c.month)}</div>
+                            <div class="coupon-list-item__meta">${c.desc_ar}</div>
+                        </div>
+                        <span class="coupon-status ${statusClasses[c.status] || ''}">${statusLabels[c.status] || c.status}</span>
                     </div>
-                    <span class="coupon-list-item__code">${c.code}</span>
-                    <span class="coupon-status ${statusClasses[c.status] || ''}">${statusLabels[c.status] || c.status}</span>
-                </div>
-            `).join('');
+                    <div style="width:100%;display:flex;gap:var(--space-4);flex-wrap:wrap;">
+                        <div style="background:var(--color-surface-muted);padding:var(--space-3);border-radius:var(--radius-md);flex:1;min-width:120px;">
+                            <div style="font-size:var(--font-size-xs);color:var(--color-text-secondary);">الاستخدام</div>
+                            <div style="font-weight:var(--font-weight-bold);font-size:var(--font-size-lg);color:var(--c-purple);">${c.total_used} <span style="font-size:var(--font-size-sm);color:var(--color-text-secondary);font-weight:400;">من ${c.total_eligible}</span></div>
+                            <div style="height:4px;background:var(--color-border);border-radius:2px;margin-top:var(--space-1);"><div style="height:100%;width:${usagePct}%;background:var(--c-purple);border-radius:2px;"></div></div>
+                        </div>
+                        <div style="background:var(--color-surface-muted);padding:var(--space-3);border-radius:var(--radius-md);flex:1;min-width:120px;">
+                            <div style="font-size:var(--font-size-xs);color:var(--color-text-secondary);">نسبة الاسترداد</div>
+                            <div style="font-weight:var(--font-weight-bold);font-size:var(--font-size-lg);">${usagePct}%</div>
+                        </div>
+                        <div style="background:var(--color-surface-muted);padding:var(--space-3);border-radius:var(--radius-md);flex:1;min-width:120px;">
+                            <div style="font-size:var(--font-size-xs);color:var(--color-text-secondary);">ينتهي</div>
+                            <div style="font-weight:var(--font-weight-bold);">${c.expires}</div>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
         }
 
         load();
