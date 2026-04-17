@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الكوبونات — Member Plus</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .coupon-tabs { display: flex; gap: var(--space-2); margin-bottom: var(--space-5); border-bottom: 1px solid var(--color-border); padding-bottom: var(--space-3); }
+        .coupon-tab { background: transparent; border: none; font: inherit; font-size: var(--font-size-sm); color: var(--color-text-secondary); cursor: pointer; padding: var(--space-2) var(--space-4); border-radius: var(--radius-md); }
+        .coupon-tab--active { background: var(--c-purple-ll); color: var(--c-purple); font-weight: var(--font-weight-bold); }
+
+        .coupon-form { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-5); margin-bottom: var(--space-5); }
+        .coupon-form__title { font-family: var(--font-display); font-size: var(--font-size-lg); font-weight: 600; margin-bottom: var(--space-4); }
+
+        .coupon-list-item { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-4); margin-bottom: var(--space-3); display: flex; align-items: center; gap: var(--space-4); }
+        .coupon-list-item__icon { font-size: 28px; }
+        .coupon-list-item__body { flex: 1; }
+        .coupon-list-item__name { font-weight: var(--font-weight-bold); margin-bottom: var(--space-1); }
+        .coupon-list-item__meta { font-size: var(--font-size-xs); color: var(--color-text-secondary); }
+        .coupon-list-item__code { font-family: monospace; font-size: var(--font-size-sm); color: var(--c-purple); background: var(--c-purple-ll); padding: var(--space-1) var(--space-3); border-radius: var(--radius-md); }
+
+        .coupon-status { display: inline-block; font-size: var(--font-size-xs); padding: var(--space-1) var(--space-3); border-radius: var(--radius-pill); font-weight: var(--font-weight-bold); }
+        .coupon-status--active { background: var(--c-success-50); color: var(--c-success-700); }
+        .coupon-status--draft { background: var(--c-warning-50); color: var(--c-gold); }
+        .coupon-status--expired { background: var(--color-surface-muted); color: var(--color-text-secondary); }
+        .coupon-status--used { background: var(--c-purple-ll); color: var(--c-purple); }
+
+        .blocked-state { background: var(--c-warning-50); border: 1px solid var(--c-gold); border-radius: var(--radius-md); padding: var(--space-5); text-align: center; }
+        .blocked-state__title { font-weight: var(--font-weight-bold); margin-bottom: var(--space-2); }
+        .blocked-state__desc { font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: var(--space-4); }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar__store">
+                <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-3);">
+                    <img src="assets/logo.svg" alt="" style="height:28px">
+                    <span style="font-size:var(--font-size-sm);color:rgba(255,255,255,0.7);">Member Plus</span>
+                </div>
+                <div class="sidebar__store-name" id="store-name">—</div>
+                <div class="sidebar__trial" id="trial-line">—</div>
+            </div>
+            <nav class="sidebar__nav">
+                <a class="sidebar__link" href="dashboard.html"><span class="icon">📊</span> لوحة التحكم</a>
+                <a class="sidebar__link" href="plans.html"><span class="icon">🏷️</span> إعدادات العضوية</a>
+                <a class="sidebar__link" href="benefits.html"><span class="icon">✨</span> المزايا</a>
+                <a class="sidebar__link" href="coupons.html" aria-current="page"><span class="icon">🎁</span> الكوبونات</a>
+                <a class="sidebar__link" href="members.html"><span class="icon">👥</span> الأعضاء</a>
+                <a class="sidebar__link" href="settings.html"><span class="icon">⚙️</span> الإعدادات</a>
+            </nav>
+            <div class="sidebar__footer">
+                <button class="sidebar__link" id="logout-btn" type="button"><span class="icon">⎋</span> تسجيل خروج</button>
+            </div>
+        </aside>
+        <div class="sidebar__overlay" id="sidebar-overlay"></div>
+
+        <div class="app-main">
+            <header class="app-topbar">
+                <div style="display:flex;align-items:center;gap:var(--space-3);">
+                    <button class="sidebar__toggle" id="sidebar-toggle" type="button">☰</button>
+                    <span class="app-topbar__title">الكوبونات</span>
+                </div>
+                <button class="btn btn--primary" id="create-btn" type="button" style="font-size:var(--font-size-sm);">+ إنشاء كوبون</button>
+            </header>
+
+            <main class="container">
+                <div id="state-loading"><div class="skeleton skeleton--block" style="height:60px;margin-bottom:var(--space-3)"></div><div class="skeleton skeleton--block" style="height:80px;margin-bottom:var(--space-3)"></div><div class="skeleton skeleton--block" style="height:80px"></div></div>
+                <div id="state-error" hidden><div class="empty"><div class="empty__icon">⚠️</div><div class="empty__title">تعذّر تحميل الكوبونات</div><p class="empty__body" id="err-body"></p><button class="btn btn--primary" id="err-retry" type="button">إعادة المحاولة</button></div></div>
+
+                <!-- Blocked state: benefit is OFF -->
+                <div id="state-blocked" hidden>
+                    <div class="blocked-state">
+                        <div class="blocked-state__title">🎁 ميزة الكوبونات معطّلة</div>
+                        <div class="blocked-state__desc">فعّل ميزة "الهدية الشهرية" من صفحة المزايا لإنشاء كوبونات جديدة.</div>
+                        <a class="btn btn--primary" href="benefits.html">الذهاب للمزايا</a>
+                    </div>
+                    <!-- History still visible when blocked -->
+                    <h3 style="margin-top:var(--space-6);margin-bottom:var(--space-3);font-family:var(--font-display);">سجل الكوبونات السابقة</h3>
+                    <div id="blocked-history"></div>
+                </div>
+
+                <div id="state-empty" hidden><div class="empty"><div class="empty__icon">🎁</div><div class="empty__title">لا توجد كوبونات بعد</div><p class="empty__body">أنشئ أول كوبون هدية لأعضائك — سيظهر هنا فور إنشائه.</p></div></div>
+
+                <div id="state-data" hidden>
+                    <!-- Create form (hidden by default, shown when + button clicked) -->
+                    <div id="create-form" hidden>
+                        <div class="coupon-form">
+                            <div class="coupon-form__title">إنشاء كوبون جديد</div>
+                            <div class="row">
+                                <div class="field"><label>نوع الكوبون</label>
+                                    <select class="input" id="coupon-type">
+                                        <option value="pct_all">نسبة خصم على الكل</option>
+                                        <option value="pct_category">نسبة خصم على فئة</option>
+                                        <option value="fixed">قيمة ثابتة</option>
+                                    </select>
+                                </div>
+                                <div class="field"><label>القيمة</label><input class="input" type="number" id="coupon-value" min="1" placeholder="25"></div>
+                            </div>
+                            <div class="row">
+                                <div class="field"><label>الوصف (عربي)</label><input class="input" id="coupon-desc-ar" placeholder="خصم 25% على الإكسسوارات"></div>
+                                <div class="field"><label>Description (EN)</label><input class="input" id="coupon-desc-en" placeholder="25% off accessories"></div>
+                            </div>
+                            <div style="display:flex;gap:var(--space-3);margin-top:var(--space-4);">
+                                <button class="btn btn--primary" id="save-coupon" type="button">حفظ كمسودة</button>
+                                <button class="btn btn--secondary" id="schedule-coupon" type="button">جدولة للشهر القادم</button>
+                                <button class="btn btn--ghost" id="cancel-create" type="button">إلغاء</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabs -->
+                    <div class="coupon-tabs">
+                        <button class="coupon-tab coupon-tab--active" data-tab="active">الشهر الحالي</button>
+                        <button class="coupon-tab" data-tab="scheduled">المجدولة</button>
+                        <button class="coupon-tab" data-tab="history">السجل</button>
+                    </div>
+
+                    <div id="coupon-list"></div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        MP.requireAuth();
+        let currentTab = 'active';
+
+        document.getElementById('sidebar-toggle').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('is-open'));
+        document.getElementById('sidebar-overlay').addEventListener('click', () => document.getElementById('sidebar').classList.remove('is-open'));
+        document.getElementById('logout-btn').addEventListener('click', MP.logout);
+        document.getElementById('err-retry').addEventListener('click', load);
+
+        document.querySelectorAll('.sidebar__nav a').forEach(a => {
+            a.addEventListener('click', (e) => {
+                const t = MP.getToken();
+                if (t && !a.href.includes('token=')) { e.preventDefault(); window.location.href = a.href + (a.href.includes('?') ? '&' : '?') + 'token=' + t; }
+            });
+        });
+
+        // Create form toggle
+        document.getElementById('create-btn').addEventListener('click', () => {
+            document.getElementById('create-form').hidden = !document.getElementById('create-form').hidden;
+        });
+        document.getElementById('cancel-create').addEventListener('click', () => {
+            document.getElementById('create-form').hidden = true;
+        });
+        document.getElementById('save-coupon').addEventListener('click', () => {
+            MP.toast('تم حفظ الكوبون كمسودة', 'success');
+            document.getElementById('create-form').hidden = true;
+        });
+        document.getElementById('schedule-coupon').addEventListener('click', () => {
+            MP.toast('تم جدولة الكوبون للشهر القادم', 'success');
+            document.getElementById('create-form').hidden = true;
+        });
+
+        // Tabs
+        document.querySelectorAll('.coupon-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.coupon-tab').forEach(t => t.classList.remove('coupon-tab--active'));
+                tab.classList.add('coupon-tab--active');
+                currentTab = tab.dataset.tab;
+                renderCoupons();
+            });
+        });
+
+        function show(w) { ['state-loading','state-error','state-blocked','state-empty','state-data'].forEach(id => { document.getElementById(id).hidden = id !== w; }); }
+
+        // Mock coupon data
+        const mockCoupons = [
+            {id: 'c1', type: 'pct_all', value: 25, desc_ar: 'خصم 25% على الكل', desc_en: '25% off everything', code: 'GIFT-A8F2K3', status: 'active', month: '2026-04', expires: '2026-04-30'},
+            {id: 'c2', type: 'fixed', value: 50, desc_ar: 'خصم 50 ر.س', desc_en: '50 SAR off', code: 'GIFT-B7X1M9', status: 'scheduled', month: '2026-05', expires: '2026-05-31'},
+            {id: 'c3', type: 'pct_category', value: 15, desc_ar: 'خصم 15% على الإكسسوارات', desc_en: '15% off accessories', code: 'GIFT-C4P2Q7', status: 'used', month: '2026-03', expires: '2026-03-31'},
+            {id: 'c4', type: 'pct_all', value: 20, desc_ar: 'خصم 20% على الكل', desc_en: '20% off everything', code: 'GIFT-D9R3S1', status: 'expired', month: '2026-02', expires: '2026-02-28'},
+        ];
+
+        async function load() {
+            show('state-loading');
+            try {
+                const ov = await MP.api('/api/v1/merchant/overview');
+                document.getElementById('store-name').textContent = ov.store_name || '—';
+                if (ov.status === 'trial' && ov.trial_ends_at) {
+                    const days = Math.max(0, Math.ceil((new Date(ov.trial_ends_at) - new Date()) / 86400000));
+                    document.getElementById('trial-line').textContent = days + ' يوم تجربة متبقي';
+                } else {
+                    document.getElementById('trial-line').textContent = ov.status === 'active' ? 'نشط' : ov.status;
+                }
+
+                // TODO: Check if benefit is enabled. For now, show data.
+                renderCoupons();
+                show('state-data');
+            } catch (err) {
+                document.getElementById('err-body').textContent = MP.errorMessage(err, 'ar');
+                show('state-error');
+            }
+        }
+
+        function renderCoupons() {
+            let filtered = mockCoupons;
+            if (currentTab === 'active') filtered = mockCoupons.filter(c => c.status === 'active');
+            else if (currentTab === 'scheduled') filtered = mockCoupons.filter(c => c.status === 'scheduled');
+            else filtered = mockCoupons; // history = all
+
+            const container = document.getElementById('coupon-list');
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="empty" style="padding:var(--space-6);"><div class="empty__icon">🎁</div><div class="empty__title">لا توجد كوبونات في هذا القسم</div></div>';
+                return;
+            }
+
+            const statusLabels = {active: 'نشط', scheduled: 'مجدول', used: 'مستخدم', expired: 'منتهي', draft: 'مسودة'};
+            const statusClasses = {active: 'coupon-status--active', scheduled: 'coupon-status--draft', used: 'coupon-status--used', expired: 'coupon-status--expired', draft: 'coupon-status--draft'};
+            const typeLabels = {pct_all: 'نسبة على الكل', pct_category: 'نسبة على فئة', fixed: 'قيمة ثابتة'};
+
+            container.innerHTML = filtered.map(c => `
+                <div class="coupon-list-item">
+                    <div class="coupon-list-item__icon">🎁</div>
+                    <div class="coupon-list-item__body">
+                        <div class="coupon-list-item__name">${c.desc_ar}</div>
+                        <div class="coupon-list-item__meta">${typeLabels[c.type] || c.type} · ${c.month} · ينتهي ${c.expires}</div>
+                    </div>
+                    <span class="coupon-list-item__code">${c.code}</span>
+                    <span class="coupon-status ${statusClasses[c.status] || ''}">${statusLabels[c.status] || c.status}</span>
+                </div>
+            `).join('');
+        }
+
+        load();
+    </script>
+</body>
+</html>
