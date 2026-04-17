@@ -6,246 +6,193 @@
     <title>إعدادات العضوية — Member Plus</title>
     <link rel="stylesheet" href="styles.css">
     <style>
-        .plans-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); margin-bottom: var(--space-5); }
+        .section-title { font-family: var(--font-display); font-size: var(--font-size-xl); font-weight: 600; margin-bottom: var(--space-4); padding-bottom: var(--space-3); border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; }
+        .plans-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-6); }
         @media (max-width: 700px) { .plans-row { grid-template-columns: 1fr; } }
-        .plan-config {
-            background: var(--color-surface); border: 2px solid var(--color-border);
-            border-radius: var(--radius-md); padding: var(--space-5);
-        }
-        .plan-config--silver { border-color: var(--c-silver); }
-        .plan-config--gold { border-color: var(--c-gold); }
-        .plan-config__head { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4); }
-        .plan-config__tier { font-size: var(--font-size-xs); text-transform: uppercase; letter-spacing: 0.12em; font-weight: var(--font-weight-bold); }
-        .plan-config--silver .plan-config__tier { color: #303f9f; }
-        .plan-config--gold .plan-config__tier { color: var(--c-gold); }
-        .plan-config__name { font-family: var(--font-display); font-size: var(--font-size-lg); font-weight: 600; }
-        .plan-config__price { font-family: var(--font-display); font-size: var(--font-size-2xl); font-weight: 700; color: var(--c-purple); }
-        .plan-config__price small { font-size: var(--font-size-sm); opacity: 0.7; }
-
-        .config-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
-        .config-item { background: var(--color-surface-muted); border-radius: var(--radius-md); padding: var(--space-3); }
-        .config-item__label { font-size: var(--font-size-xs); color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: var(--space-1); }
-        .config-item__value { font-weight: var(--font-weight-bold); }
-
-        .benefit-item { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) 0; font-size: var(--font-size-sm); }
-        .benefit-item::before { content: '◆'; color: var(--c-purple); font-size: 8px; }
-        .benefit-item--off { opacity: 0.4; text-decoration: line-through; }
-        .benefit-item--off::before { color: var(--color-text-secondary); }
-
-        .disclaimer { background: var(--c-warning-50); border: 1px solid var(--c-gold); border-radius: var(--radius-md); padding: var(--space-4); font-size: var(--font-size-sm); margin-bottom: var(--space-5); line-height: 1.7; }
-        .disclaimer strong { color: var(--c-danger-700); }
-
-        /* Edit mode inputs */
-        .edit-field { margin-bottom: var(--space-3); }
-        .edit-field label { font-size: var(--font-size-xs); color: var(--color-text-secondary); display: block; margin-bottom: var(--space-1); }
-        .edit-actions { display: flex; gap: var(--space-3); margin-top: var(--space-5); justify-content: center; }
+        .plan-card { background: var(--color-surface); border: 2px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-5); }
+        .plan-card--silver { border-color: var(--c-silver); }
+        .plan-card--gold { border-color: var(--c-gold); }
+        .plan-card__tier { font-size: var(--font-size-xs); text-transform: uppercase; letter-spacing: 0.12em; font-weight: var(--font-weight-bold); margin-bottom: var(--space-2); }
+        .plan-card--silver .plan-card__tier { color: #303f9f; }
+        .plan-card--gold .plan-card__tier { color: var(--c-gold); }
+        .plan-card__name { font-family: var(--font-display); font-size: var(--font-size-lg); font-weight: 600; margin-bottom: var(--space-3); }
+        .plan-card__price { font-family: var(--font-display); font-size: var(--font-size-2xl); font-weight: 700; color: var(--c-purple); }
+        .plan-card__price small { font-size: var(--font-size-sm); opacity: 0.7; }
+        .plan-card__detail { display: flex; gap: var(--space-4); margin-top: var(--space-3); }
+        .plan-card__stat-label { font-size: var(--font-size-xs); color: var(--color-text-secondary); }
+        .plan-card__stat-value { font-weight: var(--font-weight-bold); font-size: var(--font-size-sm); }
+        .benefit-row { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); margin-bottom: var(--space-3); }
+        .benefit-row__icon { font-size: 22px; flex-shrink: 0; }
+        .benefit-row__info { flex: 1; }
+        .benefit-row__title { font-weight: var(--font-weight-bold); font-size: var(--font-size-sm); }
+        .benefit-row__desc { font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-top: 2px; }
+        .benefit-row__tiers { display: flex; gap: var(--space-1); margin-top: var(--space-1); }
+        .tp { font-size: 9px; padding: 1px 5px; border-radius: var(--radius-pill); font-weight: var(--font-weight-bold); }
+        .tp-s { background: #e8eaf6; color: #303f9f; }
+        .tp-g { background: #fff8e1; color: var(--c-gold); }
+        .quota-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-top: var(--space-3); width: 100%; }
+        .quota-box { background: var(--color-surface-muted); border-radius: var(--radius-md); padding: var(--space-3); text-align: center; }
+        .quota-box__value { font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--c-purple); }
+        .quota-box input { text-align: center; font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); max-width: 70px; margin: 0 auto; display: block; }
+        .mgmt-cards { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+        @media (max-width: 700px) { .mgmt-cards { grid-template-columns: 1fr; } }
+        .mgmt-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-5); display: flex; align-items: center; gap: var(--space-4); text-decoration: none; color: inherit; transition: border-color var(--motion-fast); }
+        .mgmt-card:hover { border-color: var(--c-purple); text-decoration: none; }
+        .mgmt-card__icon { font-size: 28px; }
+        .mgmt-card__title { font-weight: var(--font-weight-bold); margin-bottom: 2px; }
+        .mgmt-card__desc { font-size: var(--font-size-xs); color: var(--color-text-secondary); }
+        .mgmt-card__arrow { margin-inline-start: auto; color: var(--color-text-secondary); }
+        .disclaimer { background: var(--c-warning-50); border: 1px solid var(--c-gold); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); font-size: var(--font-size-xs); margin-bottom: var(--space-5); line-height: 1.7; color: var(--color-text-secondary); }
     </style>
 </head>
 <body>
     <div class="app-shell">
         <aside class="sidebar" id="sidebar">
             <div class="sidebar__store">
-                <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-3);">
-                    <img src="assets/logo.svg" alt="" style="height:28px">
-                    <span style="font-size:var(--font-size-sm);color:rgba(255,255,255,0.7);">Member Plus</span>
-                </div>
+                <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-3);"><img src="assets/logo.svg" alt="" style="height:28px"><span style="font-size:var(--font-size-sm);color:rgba(255,255,255,0.7);">Member Plus</span></div>
                 <div class="sidebar__store-name" id="store-name">—</div>
                 <div class="sidebar__trial" id="trial-line">—</div>
             </div>
             <nav class="sidebar__nav">
-                <a class="sidebar__link" href="dashboard.html"><span class="icon">📊</span> لوحة التحكم</a>                <a class="sidebar__link" href="plans.html" aria-current="page"><span class="icon">🏷️</span> إعدادات العضوية</a>                <a class="sidebar__link" href="benefits.html"><span class="icon">✨</span> المزايا</a>                <a class="sidebar__link" href="coupons.html"><span class="icon">🎁</span> الهدية الشهرية</a>                <a class="sidebar__link" href="offers.html"><span class="icon">💎</span> العروض الخاصة</a>                <a class="sidebar__link" href="members.html"><span class="icon">👥</span> الأعضاء</a>                <a class="sidebar__link" href="settings.html"><span class="icon">⚙️</span> الإعدادات</a>
+                <a class="sidebar__link" href="dashboard.html"><span class="icon">📊</span> لوحة التحكم</a>
+                <a class="sidebar__link" href="plans.html" aria-current="page"><span class="icon">🏷️</span> إعدادات العضوية</a>
+                <a class="sidebar__link" href="coupons.html"><span class="icon">🎁</span> الهدية الشهرية</a>
+                <a class="sidebar__link" href="offers.html"><span class="icon">💎</span> العروض الخاصة</a>
+                <a class="sidebar__link" href="members.html"><span class="icon">👥</span> الأعضاء</a>
+                <a class="sidebar__link" href="settings.html"><span class="icon">⚙️</span> الإعدادات</a>
             </nav>
-            <div class="sidebar__footer">
-                <button class="sidebar__link" id="logout-btn" type="button"><span class="icon">⎋</span> تسجيل خروج</button>
-            </div>
+            <div class="sidebar__footer"><button class="sidebar__link" id="logout-btn" type="button"><span class="icon">⎋</span> تسجيل خروج</button></div>
         </aside>
         <div class="sidebar__overlay" id="sidebar-overlay"></div>
-
         <div class="app-main">
             <header class="app-topbar">
-                <div style="display:flex;align-items:center;gap:var(--space-3);">
-                    <button class="sidebar__toggle" id="sidebar-toggle" type="button">☰</button>
-                    <span class="app-topbar__title">إعدادات العضوية</span>
-                </div>
-                <button class="btn btn--secondary" id="mode-toggle" type="button" style="font-size:var(--font-size-sm);">تعديل</button>
+                <div style="display:flex;align-items:center;gap:var(--space-3);"><button class="sidebar__toggle" id="sidebar-toggle" type="button">☰</button><span class="app-topbar__title">إعدادات العضوية</span></div>
             </header>
-
             <main class="container">
-                <div id="state-loading"><div class="skeleton skeleton--block" style="height:200px;margin-bottom:var(--space-4)"></div><div class="skeleton skeleton--block" style="height:200px"></div></div>
-                <div id="state-error" hidden><div class="empty"><div class="empty__icon">⚠️</div><div class="empty__title">تعذّر تحميل الإعدادات</div><p class="empty__body" id="err-body"></p><button class="btn btn--primary" id="err-retry" type="button">إعادة المحاولة</button></div></div>
+                <div id="state-loading"><div class="skeleton skeleton--block" style="height:180px;margin-bottom:var(--space-4)"></div><div class="skeleton skeleton--block" style="height:300px"></div></div>
+                <div id="state-error" hidden><div class="empty"><div class="empty__icon">⚠️</div><div class="empty__title">تعذّر تحميل الإعدادات</div><p class="empty__body" id="err-body"></p><button class="btn btn--primary" id="err-retry">إعادة المحاولة</button></div></div>
                 <div id="state-empty" hidden><div class="empty"><div class="empty__icon">🏷️</div><div class="empty__title">لم يتم إعداد الخطط بعد</div><p class="empty__body">أكمل معالج الإعداد لإنشاء باقتي الفضية والذهبية.</p><a class="btn btn--primary" href="wizard.html">إكمال الإعداد</a></div></div>
                 <div id="state-data" hidden></div>
             </main>
         </div>
     </div>
-
     <script src="app.js"></script>
     <script>
         MP.requireAuth();
-        let editMode = false;
         let plansData = [];
+        let sq = { silver: 2, gold: 4 };
+        let sqOrig = { silver: 2, gold: 4 };
 
         document.getElementById('sidebar-toggle').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('is-open'));
         document.getElementById('sidebar-overlay').addEventListener('click', () => document.getElementById('sidebar').classList.remove('is-open'));
         document.getElementById('logout-btn').addEventListener('click', MP.logout);
         document.getElementById('err-retry').addEventListener('click', load);
-
-        document.querySelectorAll('.sidebar__nav a').forEach(a => {
-            a.addEventListener('click', (e) => {
-                const t = MP.getToken();
-                if (t && !a.href.includes('token=')) { e.preventDefault(); window.location.href = a.href + (a.href.includes('?') ? '&' : '?') + 'token=' + t; }
-            });
-        });
-
-        document.getElementById('mode-toggle').addEventListener('click', () => {
-            editMode = !editMode;
-            document.getElementById('mode-toggle').textContent = editMode ? 'إلغاء' : 'تعديل';
-            render(plansData);
-        });
+        document.querySelectorAll('.sidebar__nav a').forEach(a => { a.addEventListener('click', (e) => { const t = MP.getToken(); if (t && !a.href.includes('token=')) { e.preventDefault(); window.location.href = a.href + (a.href.includes('?') ? '&' : '?') + 'token=' + t; } }); });
 
         function show(w) { ['state-loading','state-error','state-empty','state-data'].forEach(id => { document.getElementById(id).hidden = id !== w; }); }
 
         async function load() {
             show('state-loading');
             try {
-                const [plans, ov] = await Promise.all([
-                    MP.api('/api/v1/merchant/plans'),
-                    MP.api('/api/v1/merchant/overview'),
-                ]);
+                const [plans, ov] = await Promise.all([MP.api('/api/v1/merchant/plans'), MP.api('/api/v1/merchant/overview')]);
                 document.getElementById('store-name').textContent = ov.store_name || '—';
-                if (ov.status === 'trial' && ov.trial_ends_at) {
-                    const days = Math.max(0, Math.ceil((new Date(ov.trial_ends_at) - new Date()) / 86400000));
-                    document.getElementById('trial-line').textContent = days + ' يوم تجربة متبقي';
-                } else {
-                    document.getElementById('trial-line').textContent = ov.status === 'active' ? 'نشط' : ov.status;
-                }
-                if (!plans.plans || plans.plans.length === 0) { show('state-empty'); return; }
+                if (ov.status === 'trial' && ov.trial_ends_at) { const d = Math.max(0, Math.ceil((new Date(ov.trial_ends_at) - new Date()) / 86400000)); document.getElementById('trial-line').textContent = d + ' يوم تجربة متبقي'; }
+                else { document.getElementById('trial-line').textContent = ov.status === 'active' ? 'نشط' : ov.status; }
+                if (!plans.plans || !plans.plans.length) { show('state-empty'); return; }
                 plansData = plans.plans;
-                render(plansData);
+                plansData.forEach(p => { sq[p.tier] = p.free_shipping_uses; });
+                sqOrig = { ...sq };
+                render();
                 show('state-data');
-            } catch (err) {
-                document.getElementById('err-body').textContent = MP.errorMessage(err, 'ar');
-                show('state-error');
-            }
+            } catch (err) { document.getElementById('err-body').textContent = MP.errorMessage(err, 'ar'); show('state-error'); }
         }
 
-        function render(plans) {
-            if (editMode) {
-                renderEditMode(plans);
-            } else {
-                renderViewMode(plans);
-            }
-        }
+        function render() {
+            const token = MP.getToken();
+            let h = '';
 
-        function renderViewMode(plans) {
-            let html = '<div class="plans-row">';
-            plans.forEach(p => {
-                const isGold = p.tier === 'gold';
-                const benefits = [
-                    {name: 'خصم تلقائي ' + p.discount_pct + '%', on: true},
-                    {name: 'شحن مجاني ' + p.free_shipping_uses + ' مرات/شهر', on: p.free_shipping_uses > 0},
-                    {name: 'شارة عضوية', on: true},
-                ];
-                if (isGold) {
-                    benefits.push({name: 'هدية شهرية', on: true});
-                    benefits.push({name: 'وصول مبكر للعروض', on: true});
-                }
-                html += `
-                    <div class="plan-config plan-config--${p.tier}">
-                        <div class="plan-config__head">
-                            <div>
-                                <div class="plan-config__tier">${p.tier.toUpperCase()}</div>
-                                <div class="plan-config__name">${p.display_name_ar} / ${p.display_name_en}</div>
-                            </div>
-                            <div class="plan-config__price">${p.price} <small>SAR/شهر</small></div>
-                        </div>
-                        <div class="config-grid">
-                            <div class="config-item"><div class="config-item__label">نسبة الخصم</div><div class="config-item__value">${p.discount_pct}%</div></div>
-                            <div class="config-item"><div class="config-item__label">شحن مجاني</div><div class="config-item__value">${p.free_shipping_uses} مرات/شهر</div></div>
-                            <div class="config-item"><div class="config-item__label">الحالة</div><div class="config-item__value" style="color:var(--c-success-700);">${p.status === 'active' ? 'نشطة ✓' : p.status}</div></div>
-                        </div>
-                        <div style="margin-top:var(--space-3);">${benefits.map(b => '<div class="benefit-item ' + (b.on ? '' : 'benefit-item--off') + '">' + b.name + '</div>').join('')}</div>
-                    </div>`;
+            // ── الباقات ──
+            h += '<div class="section-title">الباقات <a class="btn btn--ghost" href="wizard.html?token=' + token + '" style="font-size:var(--font-size-sm);">✏️ تعديل</a></div>';
+            h += '<div class="disclaimer">التغييرات تُطبَّق على العملاء الجدد فقط. العملاء الحاليون يستمرون على إعداداتهم الحالية.</div>';
+            h += '<div class="plans-row">';
+            plansData.forEach(p => {
+                h += '<div class="plan-card plan-card--' + p.tier + '">'
+                    + '<div class="plan-card__tier">' + p.tier.toUpperCase() + '</div>'
+                    + '<div class="plan-card__name">' + p.display_name_ar + ' / ' + p.display_name_en + '</div>'
+                    + '<div class="plan-card__price">' + p.price + ' <small>SAR/شهر</small></div>'
+                    + '<div class="plan-card__detail">'
+                    + '<div><div class="plan-card__stat-label">الخصم</div><div class="plan-card__stat-value">' + p.discount_pct + '%</div></div>'
+                    + '<div><div class="plan-card__stat-label">الشحن</div><div class="plan-card__stat-value">' + p.free_shipping_uses + '/شهر</div></div>'
+                    + '</div></div>';
             });
-            html += '</div>';
-            document.getElementById('state-data').innerHTML = html;
-        }
+            h += '</div>';
 
-        function renderEditMode(plans) {
-            let html = '<div class="disclaimer"><strong>⚠️ تعديل الإعدادات:</strong> أي تغييرات ستُطبَّق على العملاء الجدد فقط. العملاء الحاليون سيستمرون على إعداداتهم الحالية حتى نهاية دورة الاشتراك الجارية.</div>';
-            html += '<div class="plans-row">';
-            plans.forEach(p => {
-                const isGold = p.tier === 'gold';
-                html += `
-                    <div class="plan-config plan-config--${p.tier}">
-                        <div class="plan-config__tier" style="margin-bottom:var(--space-3);">${p.tier.toUpperCase()}</div>
-                        <div class="row">
-                            <div class="edit-field"><label>الاسم (عربي)</label><input class="input" id="${p.tier}-name-ar" value="${p.display_name_ar}"></div>
-                            <div class="edit-field"><label>Name (EN)</label><input class="input" id="${p.tier}-name-en" value="${p.display_name_en}"></div>
-                        </div>
-                        <div class="row">
-                            <div class="edit-field"><label>السعر الشهري (SAR)</label><input class="input" type="number" step="0.01" min="0" id="${p.tier}-price" value="${p.price}"></div>
-                            <div class="edit-field"><label>نسبة الخصم (%)</label><input class="input" type="number" min="0" max="100" id="${p.tier}-discount" value="${p.discount_pct}"></div>
-                        </div>
-                        <div class="edit-field"><label>شحن مجاني (مرات/شهر)</label><input class="input" type="number" min="0" id="${p.tier}-shipping" value="${p.free_shipping_uses}"></div>
-                        ${isGold ? `
-                            <label class="checkbox-row" style="margin-top:var(--space-3);"><input type="checkbox" id="gold-gift" checked><span>هدية شهرية</span></label>
-                            <label class="checkbox-row"><input type="checkbox" id="gold-early" checked><span>وصول مبكر</span></label>
-                        ` : ''}
-                    </div>`;
+            // ── المزايا ──
+            h += '<div class="section-title">المزايا</div>';
+
+            // Auto benefits
+            [
+                ['🏷️', 'الخصم التلقائي', 'يُطبَّق تلقائياً عند الدفع', true],
+                ['💎', 'سعر الأعضاء', 'سعر خاص على منتجات محددة', true],
+                ['⭐', 'شارة العضوية', 'شارة مرئية تعرّف العميل كعضو', true],
+                ['⚡', 'الوصول المبكر', 'منتجات حصرية قبل الإطلاق', false],
+            ].forEach(([icon, title, desc, both]) => {
+                h += '<div class="benefit-row"><div class="benefit-row__icon">' + icon + '</div><div class="benefit-row__info"><div class="benefit-row__title">' + title + '</div><div class="benefit-row__desc">' + desc + '</div><div class="benefit-row__tiers">' + (both ? '<span class="tp tp-s">S</span><span class="tp tp-g">G</span>' : '<span class="tp tp-g">G</span>') + '</div></div><div style="font-size:var(--font-size-xs);color:var(--c-success-700);">تلقائي ✓</div></div>';
             });
 
-            html += '</div>';
-            html += `
-                <div class="edit-actions">
-                    <button class="btn btn--primary" id="save-btn" type="button" style="min-width:160px;">حفظ التغييرات</button>
-                    <button class="btn btn--ghost" id="cancel-edit-btn" type="button">إلغاء</button>
-                </div>`;
+            // Shipping — inline edit
+            h += '<div class="benefit-row" style="flex-wrap:wrap;">'
+                + '<div class="benefit-row__icon">🚚</div>'
+                + '<div class="benefit-row__info"><div class="benefit-row__title">الشحن المجاني</div><div class="benefit-row__desc">كوبون شحن شهري بعدد محدود</div><div class="benefit-row__tiers"><span class="tp tp-s">S</span><span class="tp tp-g">G</span></div></div>'
+                + '<button class="btn btn--ghost" id="edit-ship" style="font-size:var(--font-size-xs);padding:2px 10px;">✏️</button>'
+                + '<div class="quota-row">'
+                + '<div class="quota-box"><span class="tp tp-s">SILVER</span><div class="quota-box__value" id="sv">' + sq.silver + '</div><input type="number" class="input" min="0" value="' + sq.silver + '" data-tier="silver" hidden style="max-width:70px;"><div style="font-size:var(--font-size-xs);color:var(--color-text-secondary);margin-top:2px;">مرات/شهر</div></div>'
+                + '<div class="quota-box"><span class="tp tp-g">GOLD</span><div class="quota-box__value" id="gv">' + sq.gold + '</div><input type="number" class="input" min="0" value="' + sq.gold + '" data-tier="gold" hidden style="max-width:70px;"><div style="font-size:var(--font-size-xs);color:var(--color-text-secondary);margin-top:2px;">مرات/شهر</div></div>'
+                + '</div>'
+                + '<button class="btn btn--primary" id="save-ship" hidden style="width:100%;margin-top:var(--space-3);">حفظ</button>'
+                + '</div>';
 
-            document.getElementById('state-data').innerHTML = html;
+            // Gift
+            h += '<div class="benefit-row"><div class="benefit-row__icon">🎁</div><div class="benefit-row__info"><div class="benefit-row__title">الهدية الشهرية</div><div class="benefit-row__desc">كوبون حصري شهري — استخدام واحد</div><div class="benefit-row__tiers"><span class="tp tp-g">G</span></div></div><a class="btn btn--ghost" href="coupons.html?token=' + token + '" style="font-size:var(--font-size-xs);padding:2px 10px;">إدارة →</a></div>';
 
-            document.getElementById('save-btn').addEventListener('click', saveChanges);
-            document.getElementById('cancel-edit-btn').addEventListener('click', () => {
-                editMode = false;
-                document.getElementById('mode-toggle').textContent = 'تعديل';
-                render(plansData);
+            // ── إدارة ──
+            h += '<div class="section-title" style="margin-top:var(--space-6);">إدارة</div>';
+            h += '<div class="mgmt-cards">'
+                + '<a class="mgmt-card" href="coupons.html?token=' + token + '"><div class="mgmt-card__icon">🎁</div><div><div class="mgmt-card__title">الهدية الشهرية</div><div class="mgmt-card__desc">إنشاء وجدولة وإدارة الهدايا</div></div><div class="mgmt-card__arrow">←</div></a>'
+                + '<a class="mgmt-card" href="offers.html?token=' + token + '"><div class="mgmt-card__icon">💎</div><div><div class="mgmt-card__title">العروض الخاصة</div><div class="mgmt-card__desc">إنشاء وإدارة العروض الحصرية</div></div><div class="mgmt-card__arrow">←</div></a>'
+                + '</div>';
+
+            document.getElementById('state-data').innerHTML = h;
+
+            // Shipping edit/save
+            const editBtn = document.getElementById('edit-ship');
+            const saveBtn = document.getElementById('save-ship');
+            const sv = document.getElementById('sv');
+            const gv = document.getElementById('gv');
+            const inputs = document.querySelectorAll('[data-tier]');
+
+            editBtn.addEventListener('click', () => {
+                inputs.forEach(i => { i.hidden = false; });
+                sv.hidden = true; gv.hidden = true;
+                editBtn.hidden = true;
+                sqOrig = { ...sq };
             });
-        }
 
-        async function saveChanges() {
-            const btn = document.getElementById('save-btn');
-            MP.setLoading(btn, true);
-            try {
-                await MP.api('/api/v1/merchant/setup/complete', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        silver: {
-                            display_name_ar: document.getElementById('silver-name-ar').value,
-                            display_name_en: document.getElementById('silver-name-en').value,
-                            price: document.getElementById('silver-price').value,
-                            discount_pct: document.getElementById('silver-discount').value,
-                            free_shipping_uses: Number(document.getElementById('silver-shipping').value),
-                        },
-                        gold: {
-                            display_name_ar: document.getElementById('gold-name-ar').value,
-                            display_name_en: document.getElementById('gold-name-en').value,
-                            price: document.getElementById('gold-price').value,
-                            discount_pct: document.getElementById('gold-discount').value,
-                            free_shipping_uses: Number(document.getElementById('gold-shipping').value),
-                        },
-                        consent_terms: true,
-                        consent_cancel: true,
-                    }),
+            inputs.forEach(i => {
+                i.addEventListener('input', () => {
+                    const s = Number(document.querySelector('[data-tier="silver"]').value) || 0;
+                    const g = Number(document.querySelector('[data-tier="gold"]').value) || 0;
+                    saveBtn.hidden = (s === sqOrig.silver && g === sqOrig.gold);
                 });
-                MP.toast('تم حفظ التغييرات', 'success');
-                editMode = false;
-                document.getElementById('mode-toggle').textContent = 'تعديل';
-                await load(); // reload fresh data
-            } catch (err) {
-                MP.toast(MP.errorMessage(err, 'ar'), 'danger');
-            } finally {
-                MP.setLoading(btn, false);
-            }
+            });
+
+            saveBtn.addEventListener('click', () => {
+                inputs.forEach(i => { sq[i.dataset.tier] = Math.max(0, Number(i.value) || 0); i.hidden = true; });
+                sv.textContent = sq.silver; sv.hidden = false;
+                gv.textContent = sq.gold; gv.hidden = false;
+                saveBtn.hidden = true; editBtn.hidden = false;
+                MP.toast('تم الحفظ — الفضية: ' + sq.silver + ' · الذهبية: ' + sq.gold, 'success');
+            });
         }
 
         load();

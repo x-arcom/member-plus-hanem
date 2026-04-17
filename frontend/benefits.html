@@ -269,34 +269,35 @@
             }
         }
 
-        // Shipping quota per tier
+        // Default configured values (read-only until Edit is clicked)
         let shippingQuota = { silver: 2, gold: 4 };
 
         function renderShippingInline() {
             return `
                 <div class="shipping-config">
-                    <div class="shipping-config__title">عدد مرات الشحن المجاني شهرياً</div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-3);">
+                        <div class="shipping-config__title" style="margin:0;">عدد مرات الشحن المجاني شهرياً</div>
+                        <button class="btn btn--ghost" id="edit-shipping" type="button" style="padding:var(--space-1) var(--space-3);font-size:var(--font-size-sm);">✏️ تعديل</button>
+                    </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);">
                         <div class="shipping-method" style="flex-direction:column;align-items:stretch;cursor:default;">
                             <div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-2);">
                                 <span class="tier-pill tier-pill--silver">SILVER</span>
-                                <span class="shipping-method__name">الباقة الفضية</span>
                             </div>
-                            <input type="number" class="input" min="0" value="${shippingQuota.silver}" data-tier="silver"
+                            <input type="number" class="input" min="0" value="${shippingQuota.silver}" data-tier="silver" disabled
                                    style="text-align:center;font-size:var(--font-size-lg);font-weight:var(--font-weight-bold);">
                             <div style="font-size:var(--font-size-xs);color:var(--color-text-secondary);margin-top:var(--space-1);text-align:center;">مرات / شهر</div>
                         </div>
                         <div class="shipping-method" style="flex-direction:column;align-items:stretch;cursor:default;">
                             <div style="display:flex;align-items:center;gap:var(--space-2);margin-bottom:var(--space-2);">
                                 <span class="tier-pill tier-pill--gold">GOLD</span>
-                                <span class="shipping-method__name">الباقة الذهبية</span>
                             </div>
-                            <input type="number" class="input" min="0" value="${shippingQuota.gold}" data-tier="gold"
+                            <input type="number" class="input" min="0" value="${shippingQuota.gold}" data-tier="gold" disabled
                                    style="text-align:center;font-size:var(--font-size-lg);font-weight:var(--font-weight-bold);">
                             <div style="font-size:var(--font-size-xs);color:var(--color-text-secondary);margin-top:var(--space-1);text-align:center;">مرات / شهر</div>
                         </div>
                     </div>
-                    <button class="btn btn--secondary" id="save-shipping" type="button" style="margin-top:var(--space-3);width:100%;">حفظ</button>
+                    <button class="btn btn--primary" id="save-shipping" type="button" hidden style="margin-top:var(--space-3);width:100%;">حفظ</button>
                 </div>`;
         }
 
@@ -362,16 +363,38 @@
                 });
             });
 
-            // Shipping quota inputs
-            container.querySelectorAll('[data-tier]').forEach(input => {
-                input.addEventListener('change', () => {
-                    shippingQuota[input.dataset.tier] = Math.max(0, Number(input.value) || 0);
-                });
-            });
+            // Shipping: edit icon enables fields, save only appears when values change
+            const editShipBtn = container.querySelector('#edit-shipping');
             const saveShipBtn = container.querySelector('#save-shipping');
-            if (saveShipBtn) {
+            if (editShipBtn && saveShipBtn) {
+                let originalValues = { silver: shippingQuota.silver, gold: shippingQuota.gold };
+
+                editShipBtn.addEventListener('click', () => {
+                    container.querySelectorAll('[data-tier]').forEach(input => { input.disabled = false; });
+                    originalValues = { silver: shippingQuota.silver, gold: shippingQuota.gold };
+                    editShipBtn.hidden = true;
+                });
+
+                // Save appears ONLY when values actually change
+                container.querySelectorAll('[data-tier]').forEach(input => {
+                    input.addEventListener('input', () => {
+                        const current = {
+                            silver: Number(container.querySelector('[data-tier="silver"]').value) || 0,
+                            gold: Number(container.querySelector('[data-tier="gold"]').value) || 0,
+                        };
+                        const changed = current.silver !== originalValues.silver || current.gold !== originalValues.gold;
+                        saveShipBtn.hidden = !changed;
+                    });
+                });
+
                 saveShipBtn.addEventListener('click', () => {
+                    container.querySelectorAll('[data-tier]').forEach(input => {
+                        shippingQuota[input.dataset.tier] = Math.max(0, Number(input.value) || 0);
+                        input.disabled = true;
+                    });
                     MP.toast(`تم الحفظ — الفضية: ${shippingQuota.silver} مرات · الذهبية: ${shippingQuota.gold} مرات`, 'success');
+                    saveShipBtn.hidden = true;
+                    editShipBtn.hidden = false;
                 });
             }
         }
