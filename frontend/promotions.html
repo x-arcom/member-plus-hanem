@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الهدايا والعروض — Member Plus</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .filters { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-4); }
+        .filter-group { display: flex; gap: var(--space-1); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 2px; }
+        .filter-btn { background: transparent; border: none; font: inherit; font-size: var(--font-size-xs); color: var(--color-text-secondary); cursor: pointer; padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); transition: all var(--motion-fast); }
+        .filter-btn--active { background: var(--c-purple); color: #fff; }
+
+        .promo-item { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-4); margin-bottom: var(--space-3); }
+        .promo-item__head { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
+        .promo-item__type { font-size: 22px; flex-shrink: 0; }
+        .promo-item__title { flex: 1; }
+        .promo-item__name { font-family: var(--font-display); font-weight: 600; font-size: var(--font-size-md); }
+        .promo-item__month { font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-top: 2px; }
+
+        .type-badge { font-size: var(--font-size-xs); padding: 2px 8px; border-radius: var(--radius-pill); font-weight: var(--font-weight-bold); }
+        .type-badge--gift { background: #fce4ec; color: #c62828; }
+        .type-badge--offer { background: #e8eaf6; color: #303f9f; }
+
+        .status-pill { font-size: var(--font-size-xs); padding: 2px 8px; border-radius: var(--radius-pill); font-weight: var(--font-weight-bold); }
+        .status--active { background: var(--c-success-50); color: var(--c-success-700); }
+        .status--scheduled { background: var(--c-warning-50); color: var(--c-gold); }
+        .status--expired { background: var(--color-surface-muted); color: var(--color-text-secondary); }
+        .status--used { background: var(--c-purple-ll); color: var(--c-purple); }
+
+        .promo-item__stats { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+        .stat-mini { background: var(--color-surface-muted); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); min-width: 100px; }
+        .stat-mini__label { font-size: 10px; color: var(--color-text-secondary); }
+        .stat-mini__value { font-weight: var(--font-weight-bold); font-size: var(--font-size-sm); }
+        .stat-mini__bar { height: 3px; background: var(--color-border); border-radius: 2px; margin-top: 3px; }
+        .stat-mini__bar-fill { height: 100%; background: var(--c-purple); border-radius: 2px; }
+
+        .create-form { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-5); margin-bottom: var(--space-5); }
+        .summary-bar { display: flex; gap: var(--space-4); margin-bottom: var(--space-5); }
+        .summary-stat { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); flex: 1; text-align: center; }
+        .summary-stat__value { font-family: var(--font-display); font-size: var(--font-size-xl); font-weight: 700; color: var(--c-purple); }
+        .summary-stat__label { font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-top: 2px; }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar__store">
+                <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-3);"><img src="assets/logo.svg" alt="" style="height:28px"><span style="font-size:var(--font-size-sm);color:rgba(255,255,255,0.7);">Member Plus</span></div>
+                <div class="sidebar__store-name" id="store-name">—</div>
+                <div class="sidebar__trial" id="trial-line">—</div>
+            </div>
+            <nav class="sidebar__nav">
+                <a class="sidebar__link" href="dashboard.html"><span class="icon">📊</span> لوحة التحكم</a>
+                <a class="sidebar__link" href="plans.html"><span class="icon">🏷️</span> إعدادات العضوية</a>
+                <a class="sidebar__link" href="promotions.html" aria-current="page"><span class="icon">🎁</span> الهدايا والعروض</a>
+                <a class="sidebar__link" href="members.html"><span class="icon">👥</span> الأعضاء</a>
+                <a class="sidebar__link" href="settings.html"><span class="icon">⚙️</span> الإعدادات</a>
+            </nav>
+            <div class="sidebar__footer"><button class="sidebar__link" id="logout-btn" type="button"><span class="icon">⎋</span> تسجيل خروج</button></div>
+        </aside>
+        <div class="sidebar__overlay" id="sidebar-overlay"></div>
+
+        <div class="app-main">
+            <header class="app-topbar">
+                <div style="display:flex;align-items:center;gap:var(--space-3);"><button class="sidebar__toggle" id="sidebar-toggle" type="button">☰</button><span class="app-topbar__title">الهدايا والعروض</span></div>
+                <button class="btn btn--primary" id="create-btn" type="button" style="font-size:var(--font-size-sm);">+ إنشاء</button>
+            </header>
+
+            <main class="container">
+                <div id="state-loading"><div class="skeleton skeleton--block" style="height:60px;margin-bottom:var(--space-3)"></div><div class="skeleton skeleton--block" style="height:80px;margin-bottom:var(--space-3)"></div><div class="skeleton skeleton--block" style="height:80px"></div></div>
+                <div id="state-error" hidden><div class="empty"><div class="empty__icon">⚠️</div><div class="empty__title">تعذّر التحميل</div><p class="empty__body" id="err-body"></p><button class="btn btn--primary" id="err-retry">إعادة المحاولة</button></div></div>
+                <div id="state-empty" hidden><div class="empty"><div class="empty__icon">🎁</div><div class="empty__title">لا توجد هدايا أو عروض بعد</div><p class="empty__body">أنشئ أول هدية شهرية أو عرض خاص لأعضائك.</p></div></div>
+
+                <div id="state-data" hidden>
+                    <div id="create-form" hidden>
+                        <div class="create-form">
+                            <h3 style="font-family:var(--font-display);margin-bottom:var(--space-4);">إنشاء جديد</h3>
+                            <div class="filter-group" style="margin-bottom:var(--space-4);">
+                                <button class="filter-btn filter-btn--active" data-create-type="gift" type="button">🎁 هدية شهرية</button>
+                                <button class="filter-btn" data-create-type="offer" type="button">💎 عرض خاص</button>
+                            </div>
+                            <div class="row">
+                                <div class="field"><label>الوصف (عربي)</label><input class="input" id="new-desc-ar" placeholder="خصم 25% على الإكسسوارات"></div>
+                                <div class="field"><label>القيمة</label><input class="input" type="number" id="new-value" min="1" placeholder="25"></div>
+                            </div>
+                            <div style="display:flex;gap:var(--space-3);margin-top:var(--space-3);">
+                                <button class="btn btn--primary" id="save-new">حفظ</button>
+                                <button class="btn btn--secondary" id="schedule-new">جدولة للشهر القادم</button>
+                                <button class="btn btn--ghost" id="cancel-new">إلغاء</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Summary -->
+                    <div class="summary-bar" id="summary"></div>
+
+                    <!-- Filters -->
+                    <div class="filters">
+                        <div class="filter-group">
+                            <button class="filter-btn filter-btn--active" data-type="all">الكل</button>
+                            <button class="filter-btn" data-type="gift">🎁 الهدايا</button>
+                            <button class="filter-btn" data-type="offer">💎 العروض</button>
+                        </div>
+                        <div class="filter-group">
+                            <button class="filter-btn filter-btn--active" data-status="all">الكل</button>
+                            <button class="filter-btn" data-status="active">الحالي</button>
+                            <button class="filter-btn" data-status="scheduled">المجدول</button>
+                            <button class="filter-btn" data-status="expired">المنتهي</button>
+                        </div>
+                    </div>
+
+                    <div id="promo-list"></div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        MP.requireAuth();
+        let typeFilter = 'all';
+        let statusFilter = 'all';
+
+        document.getElementById('sidebar-toggle').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('is-open'));
+        document.getElementById('sidebar-overlay').addEventListener('click', () => document.getElementById('sidebar').classList.remove('is-open'));
+        document.getElementById('logout-btn').addEventListener('click', MP.logout);
+        document.getElementById('err-retry').addEventListener('click', load);
+        document.querySelectorAll('.sidebar__nav a').forEach(a => { a.addEventListener('click', (e) => { const t = MP.getToken(); if (t && !a.href.includes('token=')) { e.preventDefault(); window.location.href = a.href + (a.href.includes('?') ? '&' : '?') + 'token=' + t; } }); });
+
+        document.getElementById('create-btn').addEventListener('click', () => { document.getElementById('create-form').hidden = !document.getElementById('create-form').hidden; });
+        document.getElementById('cancel-new').addEventListener('click', () => { document.getElementById('create-form').hidden = true; });
+        document.getElementById('save-new').addEventListener('click', () => { MP.toast('تم الحفظ', 'success'); document.getElementById('create-form').hidden = true; });
+        document.getElementById('schedule-new').addEventListener('click', () => { MP.toast('تم الجدولة للشهر القادم', 'success'); document.getElementById('create-form').hidden = true; });
+
+        // Create type toggle
+        document.querySelectorAll('[data-create-type]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-create-type]').forEach(b => b.classList.remove('filter-btn--active'));
+                btn.classList.add('filter-btn--active');
+            });
+        });
+
+        // Filters
+        document.querySelectorAll('[data-type]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-type]').forEach(b => b.classList.remove('filter-btn--active'));
+                btn.classList.add('filter-btn--active');
+                typeFilter = btn.dataset.type;
+                renderList();
+            });
+        });
+        document.querySelectorAll('[data-status]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-status]').forEach(b => b.classList.remove('filter-btn--active'));
+                btn.classList.add('filter-btn--active');
+                statusFilter = btn.dataset.status;
+                renderList();
+            });
+        });
+
+        function show(w) { ['state-loading','state-error','state-empty','state-data'].forEach(id => { document.getElementById(id).hidden = id !== w; }); }
+
+        const MONTHS = {'01':'يناير','02':'فبراير','03':'مارس','04':'أبريل','05':'مايو','06':'يونيو','07':'يوليو','08':'أغسطس','09':'سبتمبر','10':'أكتوبر','11':'نوفمبر','12':'ديسمبر'};
+        function ml(m) { const p = m.split('-'); return MONTHS[p[1]] + ' ' + p[0]; }
+
+        const items = [
+            {id:1, type:'gift', month:'2026-04', desc:'خصم 25% على جميع المنتجات', value:25, status:'active', expires:'2026-04-30', eligible:22, used:8},
+            {id:2, type:'gift', month:'2026-05', desc:'خصم 50 ر.س على الطلبات فوق 200', value:50, status:'scheduled', expires:'2026-05-31', eligible:22, used:0},
+            {id:3, type:'offer', month:'2026-04', desc:'اشترِ 2 واحصل على الثالث مجاناً', value:0, status:'active', expires:'2026-04-30', eligible:22, used:5},
+            {id:4, type:'gift', month:'2026-03', desc:'خصم 15% على الإكسسوارات', value:15, status:'expired', expires:'2026-03-31', eligible:18, used:12},
+            {id:5, type:'offer', month:'2026-03', desc:'خصم 30% على الأحذية', value:30, status:'expired', expires:'2026-03-31', eligible:18, used:14},
+            {id:6, type:'gift', month:'2026-02', desc:'خصم 20% على الكل', value:20, status:'expired', expires:'2026-02-28', eligible:15, used:9},
+            {id:7, type:'offer', month:'2026-02', desc:'شحن مجاني على الطلبات فوق 100', value:0, status:'expired', expires:'2026-02-28', eligible:15, used:11},
+        ];
+
+        async function load() {
+            show('state-loading');
+            try {
+                const ov = await MP.api('/api/v1/merchant/overview');
+                document.getElementById('store-name').textContent = ov.store_name || '—';
+                if (ov.status === 'trial' && ov.trial_ends_at) { const d = Math.max(0, Math.ceil((new Date(ov.trial_ends_at) - new Date()) / 86400000)); document.getElementById('trial-line').textContent = d + ' يوم تجربة متبقي'; }
+                else { document.getElementById('trial-line').textContent = ov.status === 'active' ? 'نشط' : ov.status; }
+
+                renderSummary();
+                renderList();
+                show('state-data');
+            } catch (err) { document.getElementById('err-body').textContent = MP.errorMessage(err, 'ar'); show('state-error'); }
+        }
+
+        function renderSummary() {
+            const activeGifts = items.filter(i => i.type === 'gift' && i.status === 'active').length;
+            const activeOffers = items.filter(i => i.type === 'offer' && i.status === 'active').length;
+            const scheduled = items.filter(i => i.status === 'scheduled').length;
+            const totalUsed = items.reduce((s, i) => s + i.used, 0);
+
+            document.getElementById('summary').innerHTML = `
+                <div class="summary-stat"><div class="summary-stat__value">${activeGifts}</div><div class="summary-stat__label">هدايا نشطة</div></div>
+                <div class="summary-stat"><div class="summary-stat__value">${activeOffers}</div><div class="summary-stat__label">عروض نشطة</div></div>
+                <div class="summary-stat"><div class="summary-stat__value">${scheduled}</div><div class="summary-stat__label">مجدولة</div></div>
+                <div class="summary-stat"><div class="summary-stat__value">${totalUsed}</div><div class="summary-stat__label">استخدام إجمالي</div></div>`;
+        }
+
+        function renderList() {
+            let filtered = items;
+            if (typeFilter !== 'all') filtered = filtered.filter(i => i.type === typeFilter);
+            if (statusFilter !== 'all') filtered = filtered.filter(i => i.status === statusFilter);
+
+            const container = document.getElementById('promo-list');
+            if (!filtered.length) {
+                container.innerHTML = '<div class="empty" style="padding:var(--space-6);"><div class="empty__icon">' + (typeFilter === 'gift' ? '🎁' : typeFilter === 'offer' ? '💎' : '📋') + '</div><div class="empty__title">لا توجد عناصر</div></div>';
+                return;
+            }
+
+            const statusLabels = {active:'نشط', scheduled:'مجدول', expired:'منتهي', used:'مستخدم'};
+            const statusClasses = {active:'status--active', scheduled:'status--scheduled', expired:'status--expired', used:'status--used'};
+
+            container.innerHTML = filtered.map(i => {
+                const pct = i.eligible > 0 ? Math.round((i.used / i.eligible) * 100) : 0;
+                const isGift = i.type === 'gift';
+                return `
+                    <div class="promo-item">
+                        <div class="promo-item__head">
+                            <div class="promo-item__type">${isGift ? '🎁' : '💎'}</div>
+                            <div class="promo-item__title">
+                                <div class="promo-item__name">${isGift ? 'هدية' : 'عرض'} ${ml(i.month)}</div>
+                                <div class="promo-item__month">${i.desc}</div>
+                            </div>
+                            <span class="type-badge ${isGift ? 'type-badge--gift' : 'type-badge--offer'}">${isGift ? 'هدية' : 'عرض'}</span>
+                            <span class="status-pill ${statusClasses[i.status] || ''}">${statusLabels[i.status] || i.status}</span>
+                        </div>
+                        <div class="promo-item__stats">
+                            <div class="stat-mini">
+                                <div class="stat-mini__label">الاستخدام</div>
+                                <div class="stat-mini__value">${i.used} من ${i.eligible}</div>
+                                <div class="stat-mini__bar"><div class="stat-mini__bar-fill" style="width:${pct}%"></div></div>
+                            </div>
+                            <div class="stat-mini">
+                                <div class="stat-mini__label">نسبة الاسترداد</div>
+                                <div class="stat-mini__value">${pct}%</div>
+                            </div>
+                            <div class="stat-mini">
+                                <div class="stat-mini__label">ينتهي</div>
+                                <div class="stat-mini__value">${i.expires}</div>
+                            </div>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        load();
+    </script>
+</body>
+</html>
