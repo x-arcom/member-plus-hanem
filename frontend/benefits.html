@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>المزايا — Member Plus</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .benefit-card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: var(--space-5);
+            margin-bottom: var(--space-4);
+            transition: border-color var(--motion-fast);
+        }
+        .benefit-card--active { border-color: var(--c-purple); }
+        .benefit-card__head {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            margin-bottom: var(--space-3);
+        }
+        .benefit-card__info { flex: 1; }
+        .benefit-card__icon { font-size: 28px; margin-inline-end: var(--space-3); }
+        .benefit-card__title {
+            font-family: var(--font-display);
+            font-size: var(--font-size-lg); font-weight: 600;
+            display: flex; align-items: center; gap: var(--space-2);
+        }
+        .benefit-card__desc {
+            font-size: var(--font-size-sm); color: var(--color-text-secondary);
+            margin-top: var(--space-1); line-height: 1.6;
+        }
+        .benefit-card__toggle {
+            position: relative; width: 48px; height: 26px;
+            background: var(--color-border); border-radius: 13px;
+            cursor: pointer; transition: background var(--motion-fast);
+            flex-shrink: 0; border: none;
+        }
+        .benefit-card__toggle::after {
+            content: ''; position: absolute; top: 3px; inset-inline-start: 3px;
+            width: 20px; height: 20px; background: #fff; border-radius: 50%;
+            transition: transform var(--motion-fast);
+        }
+        .benefit-card__toggle--on { background: var(--c-purple); }
+        .benefit-card__toggle--on::after { transform: translateX(-22px); }
+        [dir="ltr"] .benefit-card__toggle--on::after { transform: translateX(22px); }
+
+        .benefit-card__state {
+            display: inline-flex; align-items: center; gap: var(--space-1);
+            font-size: var(--font-size-xs); padding: var(--space-1) var(--space-3);
+            border-radius: var(--radius-pill); margin-top: var(--space-2);
+        }
+        .benefit-card__state--on { background: var(--c-success-50); color: var(--c-success-700); }
+        .benefit-card__state--off { background: var(--color-surface-muted); color: var(--color-text-secondary); }
+
+        .benefit-card__cta {
+            margin-top: var(--space-4); padding-top: var(--space-3);
+            border-top: 1px solid var(--color-border);
+        }
+        .benefit-card__cta--hidden { display: none; }
+
+        .benefit-card__tiers {
+            display: flex; gap: var(--space-2); margin-top: var(--space-3);
+        }
+        .tier-pill {
+            font-size: var(--font-size-xs); padding: var(--space-1) var(--space-3);
+            border-radius: var(--radius-pill); font-weight: var(--font-weight-bold);
+            letter-spacing: 0.05em;
+        }
+        .tier-pill--silver { background: #e8eaf6; color: #303f9f; }
+        .tier-pill--gold { background: #fff8e1; color: var(--c-gold); }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar__store">
+                <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-3);">
+                    <img src="assets/logo.svg" alt="" style="height:28px">
+                    <span style="font-size:var(--font-size-sm);color:rgba(255,255,255,0.7);">Member Plus</span>
+                </div>
+                <div class="sidebar__store-name" id="store-name">—</div>
+                <div class="sidebar__trial" id="trial-line">—</div>
+            </div>
+            <nav class="sidebar__nav">
+                <a class="sidebar__link" href="dashboard.html"><span class="icon">📊</span> لوحة التحكم</a>
+                <a class="sidebar__link" href="plans.html"><span class="icon">🏷️</span> إعدادات العضوية</a>
+                <a class="sidebar__link" href="benefits.html" aria-current="page"><span class="icon">✨</span> المزايا</a>
+                <a class="sidebar__link" href="members.html"><span class="icon">👥</span> الأعضاء</a>
+                <a class="sidebar__link" href="settings.html"><span class="icon">⚙️</span> الإعدادات</a>
+            </nav>
+            <div class="sidebar__footer">
+                <button class="sidebar__link" id="logout-btn" type="button"><span class="icon">⎋</span> تسجيل خروج</button>
+            </div>
+        </aside>
+        <div class="sidebar__overlay" id="sidebar-overlay"></div>
+
+        <div class="app-main">
+            <header class="app-topbar">
+                <div style="display:flex;align-items:center;gap:var(--space-3);">
+                    <button class="sidebar__toggle" id="sidebar-toggle" type="button">☰</button>
+                    <span class="app-topbar__title">المزايا</span>
+                </div>
+            </header>
+
+            <main class="container">
+                <div id="state-loading">
+                    <div class="skeleton skeleton--block" style="height:150px;margin-bottom:var(--space-4)"></div>
+                    <div class="skeleton skeleton--block" style="height:150px;margin-bottom:var(--space-4)"></div>
+                    <div class="skeleton skeleton--block" style="height:150px"></div>
+                </div>
+                <div id="state-error" hidden>
+                    <div class="empty"><div class="empty__icon">⚠️</div><div class="empty__title">تعذّر تحميل المزايا</div><p class="empty__body" id="err-body"></p><button class="btn btn--primary" id="err-retry" type="button">إعادة المحاولة</button></div>
+                </div>
+                <div id="state-empty" hidden>
+                    <div class="empty"><div class="empty__icon">✨</div><div class="empty__title">أكمل إعداد العضوية أولاً</div><p class="empty__body">يجب إعداد الباقات قبل تفعيل المزايا.</p><a class="btn btn--primary" href="wizard.html">إكمال الإعداد</a></div>
+                </div>
+                <div id="state-data" hidden>
+                    <p style="color:var(--color-text-secondary);font-size:var(--font-size-sm);margin-bottom:var(--space-5);">
+                        تحكّم في المزايا التي يحصل عليها أعضاء برنامجك. كل ميزة يمكن تفعيلها أو تعطيلها بشكل مستقل.
+                    </p>
+                    <div id="benefits-list"></div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        MP.requireAuth();
+
+        document.getElementById('sidebar-toggle').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('is-open'));
+        document.getElementById('sidebar-overlay').addEventListener('click', () => document.getElementById('sidebar').classList.remove('is-open'));
+        document.getElementById('logout-btn').addEventListener('click', MP.logout);
+        document.getElementById('err-retry').addEventListener('click', load);
+        document.querySelectorAll('.sidebar__nav a').forEach(a => {
+            a.addEventListener('click', (e) => {
+                const t = MP.getToken();
+                if (t && !a.href.includes('token=')) { e.preventDefault(); window.location.href = a.href + (a.href.includes('?') ? '&' : '?') + 'token=' + t; }
+            });
+        });
+
+        function show(w) { ['state-loading','state-error','state-empty','state-data'].forEach(id => { document.getElementById(id).hidden = id !== w; }); }
+
+        // Benefit definitions
+        const BENEFITS = [
+            {
+                id: 'auto_discount',
+                icon: '🏷️',
+                title: 'الخصم التلقائي',
+                desc: 'يُطبَّق تلقائياً عند الدفع لجميع الأعضاء. لا يحتاج أي إجراء من العميل.',
+                type: 'automatic',
+                tiers: ['silver', 'gold'],
+                alwaysOn: true,
+                ctaLabel: null,
+                ctaPage: null,
+            },
+            {
+                id: 'member_price',
+                icon: '💎',
+                title: 'سعر الأعضاء',
+                desc: 'سعر خاص على منتجات محددة يظهر فقط للأعضاء. يُدار من داخل سلة مباشرة.',
+                type: 'automatic',
+                tiers: ['silver', 'gold'],
+                alwaysOn: true,
+                ctaLabel: null,
+                ctaPage: null,
+            },
+            {
+                id: 'free_shipping',
+                icon: '🚚',
+                title: 'الشحن المجاني',
+                desc: 'كوبون شحن مجاني شهري بعدد محدود من الاستخدامات. يُدخله العميل يدوياً عند الدفع.',
+                type: 'quota',
+                tiers: ['silver', 'gold'],
+                alwaysOn: false,
+                ctaLabel: 'إعدادات الشحن',
+                ctaPage: 'shipping',
+            },
+            {
+                id: 'monthly_gift',
+                icon: '🎁',
+                title: 'الهدية الشهرية',
+                desc: 'كوبون حصري شهري بقيمة أو نسبة خصم. استخدام واحد فقط — لا يُرحَّل للشهر التالي.',
+                type: 'quota',
+                tiers: ['gold'],
+                alwaysOn: false,
+                ctaLabel: 'إدارة الكوبونات',
+                ctaPage: 'coupons',
+            },
+            {
+                id: 'early_access',
+                icon: '⚡',
+                title: 'الوصول المبكر',
+                desc: 'منتجات مخفية عن الزوار العاديين تظهر فقط لأعضاء الباقة الذهبية قبل إطلاقها للجميع.',
+                type: 'automatic',
+                tiers: ['gold'],
+                alwaysOn: false,
+                ctaLabel: null,
+                ctaPage: null,
+            },
+            {
+                id: 'badge',
+                icon: '⭐',
+                title: 'شارة العضوية',
+                desc: 'شارة مرئية في المتجر تعرّف العميل كعضو. الضغط عليها يفتح لوحة سريعة بالكوبونات والوفرات.',
+                type: 'automatic',
+                tiers: ['silver', 'gold'],
+                alwaysOn: true,
+                ctaLabel: null,
+                ctaPage: null,
+            },
+        ];
+
+        // Track toggle states
+        const toggleState = {};
+        BENEFITS.forEach(b => { toggleState[b.id] = b.alwaysOn ? true : true; });
+
+        async function load() {
+            show('state-loading');
+            try {
+                const ov = await MP.api('/api/v1/merchant/overview');
+                document.getElementById('store-name').textContent = ov.store_name || '—';
+                if (ov.status === 'trial' && ov.trial_ends_at) {
+                    const days = Math.max(0, Math.ceil((new Date(ov.trial_ends_at) - new Date()) / 86400000));
+                    document.getElementById('trial-line').textContent = days + ' يوم تجربة متبقي';
+                } else {
+                    document.getElementById('trial-line').textContent = ov.status === 'active' ? 'نشط' : ov.status;
+                }
+                if (!ov.setup_completed) { show('state-empty'); return; }
+                renderBenefits();
+                show('state-data');
+            } catch (err) {
+                document.getElementById('err-body').textContent = MP.errorMessage(err, 'ar');
+                show('state-error');
+            }
+        }
+
+        function renderBenefits() {
+            const container = document.getElementById('benefits-list');
+            container.innerHTML = BENEFITS.map(b => {
+                const isOn = toggleState[b.id];
+                const isLocked = b.alwaysOn;
+                return `
+                    <div class="benefit-card ${isOn ? 'benefit-card--active' : ''}">
+                        <div class="benefit-card__head">
+                            <div style="display:flex;align-items:flex-start;">
+                                <span class="benefit-card__icon">${b.icon}</span>
+                                <div class="benefit-card__info">
+                                    <div class="benefit-card__title">
+                                        ${b.title}
+                                        ${isLocked ? '<span style="font-size:var(--font-size-xs);color:var(--color-text-secondary);font-weight:400;">تلقائي</span>' : ''}
+                                    </div>
+                                    <div class="benefit-card__desc">${b.desc}</div>
+                                </div>
+                            </div>
+                            ${isLocked
+                                ? '<span class="benefit-card__state benefit-card__state--on">مفعّل دائماً</span>'
+                                : `<button class="benefit-card__toggle ${isOn ? 'benefit-card__toggle--on' : ''}"
+                                          data-benefit="${b.id}" type="button"
+                                          aria-label="${isOn ? 'تعطيل' : 'تفعيل'} ${b.title}"></button>`
+                            }
+                        </div>
+                        <div class="benefit-card__tiers">
+                            ${b.tiers.includes('silver') ? '<span class="tier-pill tier-pill--silver">SILVER</span>' : ''}
+                            ${b.tiers.includes('gold') ? '<span class="tier-pill tier-pill--gold">GOLD</span>' : ''}
+                        </div>
+                        ${b.ctaLabel && isOn ? `
+                            <div class="benefit-card__cta">
+                                <a class="btn btn--ghost" href="${b.ctaPage || '#'}" style="font-size:var(--font-size-sm);">${b.ctaLabel} →</a>
+                            </div>
+                        ` : ''}
+                        ${b.ctaLabel && !isOn ? `
+                            <div class="benefit-card__cta">
+                                <span style="font-size:var(--font-size-xs);color:var(--color-text-secondary);">فعّل الميزة للوصول إلى الإعدادات</span>
+                            </div>
+                        ` : ''}
+                        <div class="benefit-card__state ${isOn ? 'benefit-card__state--on' : 'benefit-card__state--off'}" style="margin-top:var(--space-3);">
+                            ${isOn ? '✓ مفعّلة' : '✗ معطّلة'}
+                            ${b.type === 'quota' ? ' · يُعاد التعيين شهرياً' : ''}
+                        </div>
+                    </div>`;
+            }).join('');
+
+            // Bind toggle clicks
+            container.querySelectorAll('.benefit-card__toggle').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const id = btn.dataset.benefit;
+                    toggleState[id] = !toggleState[id];
+                    renderBenefits();
+                    MP.toast(toggleState[id] ? 'تم تفعيل الميزة' : 'تم تعطيل الميزة', 'success');
+                });
+            });
+        }
+
+        load();
+    </script>
+</body>
+</html>
