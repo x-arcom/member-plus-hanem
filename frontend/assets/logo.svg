@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- PRD §43.3: Diamond (rotated square) + white plus mark. Flat. No 3D/gradients/glow. -->
+  <rect x="12" y="12" width="40" height="40" rx="4" transform="rotate(45 32 32)" fill="#BE52EF"/>
+  <!-- Plus mark: geometric white rectangles -->
+  <rect x="28" y="18" width="8" height="28" rx="2" fill="#FFFFFF"/>
+  <rect x="18" y="28" width="28" height="8" rx="2" fill="#FFFFFF"/>
+</svg>

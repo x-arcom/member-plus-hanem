@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>عضويتي — Member Plus</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body { background: var(--c-neutral-50); }
+        .member-shell { max-width: 640px; margin: 0 auto; padding: var(--space-6) var(--space-4); }
+
+        /* PRD §9.4 Header: Tier badge. Renewal date. Total savings. */
+        .member-header {
+            background: var(--c-near-black);
+            color: var(--color-text-inverse);
+            border-radius: var(--radius-md);
+            padding: var(--space-6);
+            text-align: center;
+            margin-bottom: var(--space-5);
+        }
+        .member-header__badge {
+            display: inline-block;
+            padding: var(--space-1) var(--space-4);
+            border-radius: var(--radius-pill);
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-bold);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: var(--space-3);
+        }
+        .badge--gold { background: var(--c-gold); color: var(--c-near-black); }
+        .badge--silver { background: var(--c-silver); color: var(--c-near-black); }
+        .badge--grace { background: var(--c-danger-500); color: #fff; }
+        .member-header__name {
+            font-family: var(--font-display);
+            font-size: var(--font-size-2xl);
+            font-weight: 600;
+            margin-bottom: var(--space-2);
+        }
+        .member-header__renewal { font-size: var(--font-size-sm); opacity: 0.8; }
+        .member-header__savings {
+            margin-top: var(--space-3);
+            font-family: var(--font-display);
+            font-size: var(--font-size-xl);
+            color: var(--c-gold);
+        }
+
+        /* Benefit cards — PRD §9.4 */
+        .benefit-card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: var(--space-5);
+            margin-bottom: var(--space-4);
+        }
+        .benefit-card__head {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: var(--space-3);
+        }
+        .benefit-card__title { font-weight: var(--font-weight-bold); font-size: var(--font-size-md); }
+        .benefit-card__code {
+            font-family: monospace;
+            font-size: var(--font-size-lg);
+            font-weight: var(--font-weight-bold);
+            color: var(--c-purple);
+            letter-spacing: 0.08em;
+            padding: var(--space-3) var(--space-4);
+            background: var(--c-purple-ll);
+            border-radius: var(--radius-md);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .benefit-card__meta {
+            font-size: var(--font-size-xs);
+            color: var(--color-text-secondary);
+            margin-top: var(--space-2);
+        }
+        .benefit-card__bar {
+            height: 6px;
+            background: var(--color-border);
+            border-radius: var(--radius-pill);
+            overflow: hidden;
+            margin-top: var(--space-3);
+        }
+        .benefit-card__bar-fill { height: 100%; background: var(--c-purple); }
+
+        /* Grace period CTA — PRD §9.4: full-width red */
+        .grace-cta {
+            background: var(--c-danger-50);
+            border: 2px solid var(--c-danger-500);
+            border-radius: var(--radius-md);
+            padding: var(--space-5);
+            text-align: center;
+            margin-bottom: var(--space-5);
+            color: var(--c-danger-700);
+            font-size: var(--font-size-md);
+        }
+    </style>
+</head>
+<body>
+    <main class="member-shell">
+        <div id="state-loading" class="loading-block" style="padding:var(--space-10);">
+            <div class="skeleton skeleton--stat" style="height:160px;margin-bottom:var(--space-4)"></div>
+            <div class="skeleton skeleton--block" style="height:100px;margin-bottom:var(--space-3)"></div>
+            <div class="skeleton skeleton--block" style="height:100px"></div>
+        </div>
+
+        <div id="state-error" hidden>
+            <div class="empty"><div class="empty__icon">⚠️</div><div class="empty__title">تعذّر تحميل بيانات العضوية</div><p class="empty__body" id="err-body"></p><button class="btn btn--primary" id="err-retry">إعادة المحاولة</button></div>
+        </div>
+
+        <div id="state-nonmember" hidden>
+            <div class="empty">
+                <div class="empty__icon">🔍</div>
+                <div class="empty__title">لا يوجد عضوية نشطة</div>
+                <p class="empty__body">لم نجد عضوية مرتبطة بحسابك. يمكنك الانضمام الآن.</p>
+                <a class="btn btn--primary" id="join-link" href="#">الانضمام للعضوية</a>
+            </div>
+        </div>
+
+        <div id="state-data" hidden></div>
+    </main>
+
+    <script src="app.js"></script>
+    <script>
+        const storeId = new URLSearchParams(location.search).get('store');
+        const custId = new URLSearchParams(location.search).get('cid');
+
+        function show(w) {
+            ['state-loading','state-error','state-nonmember','state-data'].forEach(id => {
+                document.getElementById(id).hidden = id !== w;
+            });
+        }
+
+        document.getElementById('err-retry').addEventListener('click', load);
+        document.getElementById('join-link').href = `customer.html?store=${storeId || ''}`;
+
+        async function load() {
+            show('state-loading');
+            if (!storeId || !custId) {
+                document.getElementById('err-body').textContent = 'Missing ?store= or ?cid= parameter';
+                show('state-error');
+                return;
+            }
+            try {
+                const data = await MP.api(
+                    `/api/v1/member/state?salla_customer_id=${encodeURIComponent(custId)}&store_id=${encodeURIComponent(storeId)}`
+                );
+                if (!data.is_member) {
+                    show('state-nonmember');
+                    return;
+                }
+                render(data);
+                show('state-data');
+            } catch (err) {
+                document.getElementById('err-body').textContent = MP.errorMessage(err, 'ar');
+                show('state-error');
+            }
+        }
+
+        function render(data) {
+            const isGrace = data.status === 'grace_period';
+            const badgeClass = isGrace ? 'badge--grace' : (data.tier === 'gold' ? 'badge--gold' : 'badge--silver');
+            const badgeText = isGrace ? 'فترة سماح' : `${data.display_name_ar || data.tier} / ${data.display_name_en || data.tier}`;
+
+            const fmt = (d) => d ? new Date(d).toLocaleDateString('ar-SA') : '—';
+            const fsRemaining = data.free_shipping_remaining || 0;
+            const fsPct = data.free_shipping_quota ? Math.round((fsRemaining / (data.free_shipping_quota || 1)) * 100) : 0;
+
+            let html = '';
+
+            // Header — PRD §9.4
+            html += `
+                <section class="member-header">
+                    <div class="member-header__badge ${badgeClass}">${badgeText}</div>
+                    <div class="member-header__name">${data.display_name_ar || ''} / ${data.display_name_en || ''}</div>
+                    <div class="member-header__renewal">التجديد: ${fmt(data.current_period_end)}</div>
+                    <div class="member-header__savings">وفّرت ${Number(data.total_saved_sar || 0).toLocaleString('ar-SA')} ر.س</div>
+                </section>`;
+
+            // Grace period CTA — PRD §9.4
+            if (isGrace) {
+                html += `
+                    <div class="grace-cta">
+                        ⚠️ فشل الدفع — يرجى تحديث بطاقتك خلال الأيام القادمة للحفاظ على مزاياك
+                    </div>`;
+            }
+
+            // Free shipping card — PRD §9.4
+            html += `
+                <section class="benefit-card">
+                    <div class="benefit-card__head">
+                        <div class="benefit-card__title">🚚 الشحن المجاني</div>
+                        <span class="pill pill--info">${fsRemaining} من ${data.free_shipping_quota || 0} متبقي</span>
+                    </div>
+                    <div class="benefit-card__bar"><div class="benefit-card__bar-fill" style="width:${fsPct}%"></div></div>
+                    <div class="benefit-card__meta">الرمز أدناه — أدخله عند الدفع للشحن المجاني</div>
+                    <div class="benefit-card__code" style="margin-top:var(--space-3);">
+                        <span>FS-XXXXX</span>
+                        <button class="btn btn--ghost" style="padding:var(--space-1) var(--space-3);font-size:var(--font-size-xs);"
+                                onclick="navigator.clipboard.writeText('FS-XXXXX'); MP.toast('تم النسخ', 'success');">نسخ</button>
+                    </div>
+                </section>`;
+
+            // Auto discount info
+            html += `
+                <section class="benefit-card">
+                    <div class="benefit-card__head">
+                        <div class="benefit-card__title">🏷️ الخصم التلقائي</div>
+                        <span class="pill pill--success">${data.discount_pct || 0}%</span>
+                    </div>
+                    <div class="benefit-card__meta">يُطبَّق تلقائياً عند الدفع — لا حاجة لأي إجراء</div>
+                </section>`;
+
+            // Monthly gift (Gold only)
+            if (data.tier === 'gold') {
+                html += `
+                    <section class="benefit-card">
+                        <div class="benefit-card__head">
+                            <div class="benefit-card__title">🎁 الهدية الشهرية</div>
+                        </div>
+                        <div class="benefit-card__meta">هديتك الشهرية — تحقق من لوحة التحكم لمعرفة التفاصيل</div>
+                    </section>`;
+            }
+
+            document.getElementById('state-data').innerHTML = html;
+        }
+
+        load();
+    </script>
+</body>
+</html>

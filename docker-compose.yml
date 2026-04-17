@@ -1,0 +1,32 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    image: memberplus-backend:local
+    env_file:
+      - ./backend/.env
+    environment:
+      # Override any defaults from .env here for docker networking.
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////data/memberplus.db}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+    volumes:
+      - memberplus-data:/data
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  frontend:
+    image: python:3.11-slim
+    working_dir: /app
+    command: ["python", "-m", "http.server", "3000"]
+    volumes:
+      - ./frontend:/app:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  memberplus-data:

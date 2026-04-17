@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>العضوية — Member Plus</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body { background: var(--c-neutral-50); }
+        .plans-shell { max-width: 880px; margin: 0 auto; padding: var(--space-8) var(--space-4); }
+        .plans-header { text-align: center; margin-bottom: var(--space-8); }
+        .plans-header img { height: 48px; margin-bottom: var(--space-3); }
+        .plans-header h1 {
+            font-family: var(--font-display);
+            font-size: var(--font-size-3xl);
+            font-weight: 600;
+            margin-bottom: var(--space-2);
+        }
+        .plans-header p { color: var(--color-text-secondary); font-size: var(--font-size-md); }
+
+        /* ROI Calculator — PRD §9.2 */
+        .roi-calc {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: var(--space-5);
+            margin-bottom: var(--space-6);
+        }
+        .roi-calc h2 { font-family: var(--font-display); font-size: var(--font-size-xl); margin-bottom: var(--space-3); }
+        .roi-result {
+            font-family: var(--font-display);
+            font-size: var(--font-size-2xl);
+            font-weight: 700;
+            color: var(--c-purple);
+            margin-top: var(--space-3);
+        }
+
+        /* Tier cards — PRD §9.2: Silver and Gold side by side. Gold highlighted. */
+        .tier-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); margin-bottom: var(--space-6); }
+        @media (max-width: 600px) { .tier-row { grid-template-columns: 1fr; } }
+
+        .tier-card {
+            background: var(--color-surface);
+            border: 2px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: var(--space-6);
+            position: relative;
+        }
+        .tier-card--gold {
+            background: var(--c-near-black);
+            color: var(--color-text-inverse);
+            border-color: var(--c-gold);
+        }
+        .tier-card--gold .tier-card__price { color: var(--c-gold); }
+        .tier-card--gold .tier-card__label { color: var(--c-gold); }
+        .tier-card--gold .tier-card__benefit { color: rgba(255,255,255,0.85); }
+
+        .tier-card__badge {
+            position: absolute; top: calc(-1 * var(--space-3)); inset-inline-end: var(--space-4);
+            background: var(--c-gold); color: var(--c-near-black);
+            font-size: var(--font-size-xs); font-weight: var(--font-weight-bold);
+            padding: var(--space-1) var(--space-3); border-radius: var(--radius-pill);
+            text-transform: uppercase; letter-spacing: 0.1em;
+        }
+        .tier-card__label {
+            font-size: var(--font-size-xs); text-transform: uppercase;
+            letter-spacing: 0.12em; font-weight: var(--font-weight-bold);
+            color: var(--c-silver); margin-bottom: var(--space-2);
+        }
+        .tier-card__name {
+            font-family: var(--font-display);
+            font-size: var(--font-size-xl); font-weight: 600;
+            margin-bottom: var(--space-3);
+        }
+        .tier-card__price {
+            font-family: var(--font-display);
+            font-size: var(--font-size-3xl); font-weight: 700;
+            color: var(--c-purple); margin-bottom: var(--space-1);
+        }
+        .tier-card__price small { font-size: var(--font-size-sm); font-weight: 400; opacity: 0.7; }
+        .tier-card__benefits { list-style: none; margin: var(--space-4) 0; }
+        .tier-card__benefit {
+            padding: var(--space-2) 0;
+            font-size: var(--font-size-sm);
+            display: flex; align-items: center; gap: var(--space-2);
+        }
+        /* PRD §42.5: Diamond markers, not checkmarks */
+        .tier-card__benefit::before {
+            content: '◆'; color: var(--c-purple); font-size: 10px; flex-shrink: 0;
+        }
+        .tier-card--gold .tier-card__benefit::before { color: var(--c-gold); }
+
+        /* Trust row — PRD §9.2 */
+        .trust-row {
+            text-align: center; color: var(--color-text-secondary);
+            font-size: var(--font-size-xs); padding: var(--space-4) 0;
+            border-top: 1px solid var(--color-border);
+        }
+
+        /* Coming soon / already member states */
+        .state-card { max-width: 500px; margin: var(--space-10) auto; text-align: center; }
+    </style>
+</head>
+<body>
+    <main class="plans-shell">
+        <!-- LOADING -->
+        <div id="state-loading">
+            <div class="plans-header"><div class="skeleton skeleton--block" style="height:80px;max-width:300px;margin:0 auto"></div></div>
+            <div class="tier-row"><div class="skeleton skeleton--block" style="height:350px"></div><div class="skeleton skeleton--block" style="height:350px"></div></div>
+        </div>
+
+        <!-- ERROR -->
+        <div id="state-error" hidden>
+            <div class="empty"><div class="empty__icon">⚠️</div><div class="empty__title">تعذّر تحميل الباقات</div><p class="empty__body" id="err-body"></p><button class="btn btn--primary" id="err-retry" type="button">إعادة المحاولة</button></div>
+        </div>
+
+        <!-- COMING SOON — PRD §9.2 state 3 -->
+        <div id="state-coming-soon" hidden>
+            <div class="plans-header">
+                <img src="assets/logo.svg" alt="Member Plus">
+                <h1 id="cs-store-name"></h1>
+                <p>برنامج العضوية قيد الإعداد — سجّل اهتمامك لتُبلَّغ فور الإطلاق.</p>
+            </div>
+            <div class="state-card">
+                <button class="btn btn--primary btn--block" id="interest-btn" type="button" style="font-size:var(--font-size-lg);padding:var(--space-4);">
+                    أنا مهتم
+                </button>
+                <p id="interest-msg" style="margin-top:var(--space-3);color:var(--color-text-secondary);font-size:var(--font-size-sm);display:none;"></p>
+            </div>
+        </div>
+
+        <!-- ALREADY MEMBER — PRD §9.2 state 1 -->
+        <div id="state-already" hidden>
+            <div class="plans-header">
+                <img src="assets/logo.svg" alt="Member Plus">
+                <h1 id="already-name"></h1>
+            </div>
+            <div class="state-card">
+                <div class="alert alert--success" style="font-size:var(--font-size-lg);padding:var(--space-5);">
+                    أنت عضو بالفعل — اشتراكك نشط
+                </div>
+                <a class="btn btn--primary btn--block" id="dashboard-link" href="#" style="margin-top:var(--space-4);font-size:var(--font-size-lg);padding:var(--space-4);">
+                    الذهاب للوحة العضوية
+                </a>
+            </div>
+        </div>
+
+        <!-- PLANS — PRD §9.2 state 3 (new visitor) -->
+        <div id="state-plans" hidden>
+            <div class="plans-header">
+                <img src="assets/logo.svg" alt="Member Plus">
+                <h1 id="store-name"></h1>
+                <p>انضم لبرنامج العضوية واستمتع بمزايا حصرية كل شهر</p>
+            </div>
+
+            <!-- ROI Calculator -->
+            <section class="roi-calc">
+                <h2>كم ستوفر؟</h2>
+                <p style="font-size:var(--font-size-sm);color:var(--color-text-secondary);margin-bottom:var(--space-3);">
+                    أدخل متوسط إنفاقك الشهري لنقدّر وفراتك السنوية
+                </p>
+                <div class="row">
+                    <div class="field">
+                        <label for="roi-spend">الإنفاق الشهري (SAR)</label>
+                        <input id="roi-spend" class="input" type="number" min="0" step="10" value="500">
+                    </div>
+                </div>
+                <div class="roi-result" id="roi-result">—</div>
+                <p style="font-size:var(--font-size-xs);color:var(--color-text-secondary);margin-top:var(--space-2);">تقدير تقريبي — قد تختلف الوفرات الفعلية</p>
+            </section>
+
+            <!-- Tier Cards -->
+            <div class="tier-row" id="tier-row"></div>
+
+            <!-- Trust row -->
+            <div class="trust-row">
+                الاشتراك عبر الدفع الآمن في سلة · يمكنك الإلغاء في أي وقت · لا يمكن نقل العضوية لحساب آخر
+            </div>
+        </div>
+    </main>
+
+    <script src="app.js"></script>
+    <script>
+        const storeId = new URLSearchParams(location.search).get('store');
+
+        function show(which) {
+            ['state-loading','state-error','state-coming-soon','state-already','state-plans'].forEach(id => {
+                document.getElementById(id).hidden = id !== which;
+            });
+        }
+
+        document.getElementById('err-retry').addEventListener('click', loadPlans);
+
+        async function loadPlans() {
+            show('state-loading');
+            if (!storeId) {
+                document.getElementById('err-body').textContent = 'Missing ?store= parameter';
+                show('state-error');
+                return;
+            }
+            try {
+                const data = await MP.api(`/api/v1/store/${encodeURIComponent(storeId)}/plans`);
+
+                if (data.coming_soon) {
+                    document.getElementById('cs-store-name').textContent = data.store_name || '';
+                    show('state-coming-soon');
+                    return;
+                }
+
+                document.getElementById('store-name').textContent = data.store_name || '';
+                renderTiers(data.plans || []);
+                setupROI(data.plans || []);
+                show('state-plans');
+
+            } catch (err) {
+                document.getElementById('err-body').textContent = MP.errorMessage(err, 'ar');
+                show('state-error');
+            }
+        }
+
+        function renderTiers(plans) {
+            const container = document.getElementById('tier-row');
+            container.innerHTML = plans.map(p => {
+                const isGold = p.tier === 'gold';
+                const benefits = [];
+                benefits.push(`خصم ${Math.round(Number(p.discount_pct || 0))}% تلقائي على كل طلب`);
+                benefits.push(`${p.free_shipping_uses || 0} شحن مجاني شهرياً`);
+                if (isGold) benefits.push('هدية شهرية حصرية');
+                if (isGold) benefits.push('وصول مبكر للمنتجات الجديدة');
+                benefits.push('شارة عضوية مميزة');
+
+                return `
+                    <article class="tier-card ${isGold ? 'tier-card--gold' : ''}">
+                        ${isGold ? '<div class="tier-card__badge">الأكثر شعبية</div>' : ''}
+                        <div class="tier-card__label">${p.tier.toUpperCase()}</div>
+                        <div class="tier-card__name">${p.display_name_ar || p.tier}</div>
+                        <div class="tier-card__price">${p.price} <small>SAR / شهر</small></div>
+                        <ul class="tier-card__benefits">
+                            ${benefits.map(b => `<li class="tier-card__benefit">${b}</li>`).join('')}
+                        </ul>
+                        <button class="btn ${isGold ? 'btn--primary' : 'btn--secondary'} btn--block"
+                                style="margin-top:var(--space-4);padding:var(--space-3);"
+                                data-tier="${p.tier}">
+                            اشترك الآن
+                        </button>
+                    </article>`;
+            }).join('');
+
+            // Subscribe buttons → Salla checkout (PRD §9.2)
+            container.querySelectorAll('button[data-tier]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    // In production: redirect to Salla native checkout URL
+                    MP.toast('سيتم توجيهك لصفحة الدفع في سلة', 'info');
+                });
+            });
+        }
+
+        function setupROI(plans) {
+            const goldPlan = plans.find(p => p.tier === 'gold') || plans[0] || {};
+            const input = document.getElementById('roi-spend');
+
+            function calc() {
+                const spend = Number(input.value) || 0;
+                const discountPct = Number(goldPlan.discount_pct || 0) / 100;
+                const shippingSaves = (goldPlan.free_shipping_uses || 0) * 20 * 12; // ~20 SAR per shipping
+                const discountSaves = spend * 12 * discountPct;
+                const total = Math.round(discountSaves + shippingSaves);
+                const cost = Number(goldPlan.price || 0) * 12;
+                const net = total - cost;
+                document.getElementById('roi-result').textContent =
+                    `توفير تقريبي: ${total.toLocaleString('ar-SA')} ر.س/سنة` +
+                    (net > 0 ? ` (صافي بعد رسوم العضوية: ${net.toLocaleString('ar-SA')} ر.س)` : '');
+            }
+            input.addEventListener('input', calc);
+            calc();
+        }
+
+        // Interest button (coming soon state)
+        document.getElementById('interest-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('interest-btn');
+            MP.setLoading(btn, true);
+            try {
+                // PRD §14.8: salla_customer_id from Twilight SDK. For testing, pass a mock.
+                await MP.api(`/api/v1/store/${encodeURIComponent(storeId)}/interest`, {
+                    method: 'POST',
+                    body: JSON.stringify({ salla_customer_id: 0 }),
+                });
+                const msg = document.getElementById('interest-msg');
+                msg.textContent = '✓ سنبلغك فور إطلاق البرنامج';
+                msg.style.display = 'block';
+                btn.disabled = true;
+                btn.textContent = 'تم التسجيل ✓';
+            } catch (err) {
+                MP.toast(MP.errorMessage(err, 'ar'), 'danger');
+            } finally {
+                MP.setLoading(btn, false);
+            }
+        });
+
+        loadPlans();
+    </script>
+</body>
+</html>

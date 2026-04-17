@@ -1,0 +1,34 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual envs
+venv/
+.venv/
+env/
+
+# Tests and local caches
+.pytest_cache/
+.tox/
+.coverage
+htmlcov/
+
+# Local dev DB
+*.db
+*.sqlite
+memberplus*.db
+
+# Env files / secrets
+.env
+.env.*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Docs that don't need to ship
+tests/

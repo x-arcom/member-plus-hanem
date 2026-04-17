@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة التحكم — Member Plus</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .sidebar__store { padding: var(--space-4); border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .sidebar__store-name { font-family: var(--font-display); font-size: var(--font-size-lg); font-weight: 600; color: #fff; margin-bottom: var(--space-1); }
+        .sidebar__trial { font-size: var(--font-size-xs); }
+        .sidebar__trial--ok { color: #4ade80; }
+        .sidebar__trial--warn { color: var(--c-gold); }
+        .sidebar__plan { padding: var(--space-3) var(--space-4); border-top: 1px solid rgba(255,255,255,0.1); }
+        .sidebar__plan-name { color: var(--c-purple); font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); }
+        .sidebar__plan-upgrade { color: rgba(255,255,255,0.5); font-size: var(--font-size-xs); }
+
+        .focus-card { border-radius: var(--radius-md); padding: var(--space-4) var(--space-5); margin-bottom: var(--space-5); display: flex; align-items: center; gap: var(--space-4); }
+        .focus-card--warning { background: var(--c-warning-50); border-inline-start: 4px solid var(--c-gold); }
+        .focus-card--danger { background: var(--c-danger-50); border-inline-start: 4px solid var(--c-danger-500); }
+        .focus-card--info { background: var(--c-purple-ll); border-inline-start: 4px solid var(--c-purple); }
+        .focus-card--success { background: var(--c-success-50); border-inline-start: 4px solid var(--c-success-700); }
+        .focus-card__icon { font-size: 24px; }
+        .focus-card__body { flex: 1; font-size: var(--font-size-sm); }
+
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4); }
+        .stat-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-5); }
+        .stat-card__label { font-size: var(--font-size-xs); color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: var(--space-2); }
+        .stat-card__value { font-family: var(--font-display); font-size: var(--font-size-2xl); font-weight: 700; }
+        .stat-card__value--purple { color: var(--c-purple); }
+
+        .plans-link-bar { background: var(--c-purple-ll); border: 1px solid var(--c-purple-l); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); display: flex; justify-content: space-between; align-items: center; font-size: var(--font-size-sm); margin-bottom: var(--space-5); }
+        .plans-link-bar__url { font-family: monospace; color: var(--c-purple); }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar__store">
+                <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-3);">
+                    <img src="assets/logo.svg" alt="" style="height:28px">
+                    <span style="font-size:var(--font-size-sm);color:rgba(255,255,255,0.7);">Member Plus</span>
+                </div>
+                <div class="sidebar__store-name" id="store-name">—</div>
+                <div class="sidebar__trial" id="trial-line">—</div>
+            </div>
+            <nav class="sidebar__nav">
+                <a class="sidebar__link" href="dashboard.html" aria-current="page"><span class="icon">📊</span> لوحة التحكم</a>
+                <a class="sidebar__link" href="plans.html"><span class="icon">🏷️</span> خطط العضوية</a>
+                <a class="sidebar__link" href="members.html"><span class="icon">👥</span> الأعضاء</a>
+                <a class="sidebar__link" href="settings.html"><span class="icon">⚙️</span> الإعدادات</a>
+            </nav>
+            <div class="sidebar__plan">
+                <div class="sidebar__plan-name" id="plan-name">—</div>
+                <a class="sidebar__plan-upgrade" href="settings.html#billing">ترقية</a>
+            </div>
+            <div class="sidebar__footer">
+                <button class="sidebar__link" id="logout-btn" type="button"><span class="icon">⎋</span> تسجيل خروج</button>
+            </div>
+        </aside>
+        <div class="sidebar__overlay" id="sidebar-overlay"></div>
+
+        <div class="app-main">
+            <header class="app-topbar">
+                <div style="display:flex;align-items:center;gap:var(--space-3);">
+                    <button class="sidebar__toggle" id="sidebar-toggle" type="button">☰</button>
+                    <span class="app-topbar__title">لوحة التحكم</span>
+                </div>
+            </header>
+
+            <main class="container">
+                <div id="state-loading">
+                    <div class="skeleton skeleton--stat" style="height:60px;margin-bottom:var(--space-4)"></div>
+                    <div class="stat-grid"><div class="skeleton skeleton--block" style="height:100px"></div><div class="skeleton skeleton--block" style="height:100px"></div><div class="skeleton skeleton--block" style="height:100px"></div></div>
+                </div>
+                <div id="state-error" hidden>
+                    <div class="empty"><div class="empty__icon">⚠️</div><div class="empty__title">تعذّر تحميل لوحة التحكم</div><p class="empty__body" id="err-body"></p><button class="btn btn--primary" id="err-retry" type="button">إعادة المحاولة</button></div>
+                </div>
+                <div id="state-data" hidden></div>
+            </main>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        MP.requireAuth();
+        document.getElementById('sidebar-toggle').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('is-open'));
+        document.getElementById('sidebar-overlay').addEventListener('click', () => document.getElementById('sidebar').classList.remove('is-open'));
+        document.getElementById('logout-btn').addEventListener('click', MP.logout);
+        document.getElementById('err-retry').addEventListener('click', load);
+
+        document.querySelectorAll('.sidebar__nav a').forEach(a => {
+            a.addEventListener('click', (e) => {
+                const t = MP.getToken();
+                if (t && !a.href.includes('token=')) { e.preventDefault(); window.location.href = a.href + (a.href.includes('?') ? '&' : '?') + 'token=' + t; }
+            });
+        });
+
+        function show(w) { ['state-loading','state-error','state-data'].forEach(id => { document.getElementById(id).hidden = id !== w; }); }
+
+        async function load() {
+            show('state-loading');
+            try {
+                const [ov, focus] = await Promise.all([
+                    MP.api('/api/v1/merchant/overview'),
+                    MP.api('/api/v1/merchant/focus'),
+                ]);
+
+                document.getElementById('store-name').textContent = ov.store_name || '—';
+                if (ov.status === 'trial' && ov.trial_ends_at) {
+                    const days = Math.max(0, Math.ceil((new Date(ov.trial_ends_at) - new Date()) / 86400000));
+                    const el = document.getElementById('trial-line');
+                    el.textContent = days + ' يوم تجربة متبقي';
+                    el.className = 'sidebar__trial sidebar__trial--' + (days >= 3 ? 'ok' : 'warn');
+                } else {
+                    document.getElementById('trial-line').textContent = ov.status === 'active' ? 'نشط' : ov.status;
+                }
+                document.getElementById('plan-name').textContent = (ov.our_plan || 'Starter').charAt(0).toUpperCase() + (ov.our_plan || 'starter').slice(1);
+
+                const token = MP.getToken();
+                const focusStyles = {1:'danger',2:'warning',3:'warning',4:'info',5:'success'};
+                const focusIcons = {gift_not_configured:'🎁',grace_expiry:'⚠️',plan_limit:'📊',zero_members:'👥',all_good:'✅'};
+
+                let html = '';
+
+                // Focus card
+                html += '<div class="focus-card focus-card--' + (focusStyles[focus.priority]||'info') + '">'
+                    + '<div class="focus-card__icon">' + (focusIcons[focus.type]||'📋') + '</div>'
+                    + '<div class="focus-card__body">' + (focus.message_ar||'') + '</div>'
+                    + (focus.action ? '<a class="btn btn--secondary" href="' + focus.action + '.html?token=' + token + '">إجراء</a>' : '')
+                    + '</div>';
+
+                if (!ov.setup_completed) {
+                    html += '<div class="focus-card focus-card--warning"><div class="focus-card__icon">🔧</div><div class="focus-card__body">أكمل إعداد برنامج العضوية</div><a class="btn btn--primary" href="wizard.html?token=' + token + '">إكمال الإعداد</a></div>';
+                }
+
+                html += '<div class="stat-grid">'
+                    + '<div class="stat-card"><div class="stat-card__label">الأعضاء النشطين</div><div class="stat-card__value stat-card__value--purple">' + (ov.member_count||0) + '</div></div>'
+                    + '<div class="stat-card"><div class="stat-card__label">الحالة</div><div class="stat-card__value">' + (ov.status==='active'?'نشط ✓':ov.status) + '</div></div>'
+                    + '</div>';
+
+                html += '<div class="cta-row" style="margin-top:var(--space-5)">'
+                    + '<a class="btn btn--ghost" href="members.html?token=' + token + '">عرض الأعضاء →</a>'
+                    + '<a class="btn btn--ghost" href="plans.html?token=' + token + '">إدارة الخطط →</a>'
+                    + '</div>';
+
+                document.getElementById('state-data').innerHTML = html;
+                show('state-data');
+            } catch (err) {
+                document.getElementById('err-body').textContent = MP.errorMessage(err, 'ar');
+                show('state-error');
+            }
+        }
+
+        load();
+    </script>
+</body>
+</html>

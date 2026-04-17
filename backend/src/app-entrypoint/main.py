@@ -1,0 +1,841 @@
+"""
+Member Plus — FastAPI Application Entrypoint
+
+PRD V3.0 compliant. Routes use /api/v1/ versioning.
+Auth via permanent access token → HttpOnly session cookie (PRD Appendix B).
+Webhooks via idempotent pipeline (PRD §16).
+"""
+import sys
+import logging
+from contextlib import asynccontextmanager
+
+try:
+    from fastapi import FastAPI, Request, Depends, HTTPException, Query, Body
+    from fastapi.responses import JSONResponse
+    from fastapi.middleware.cors import CORSMiddleware
+except ImportError:
+    print("FastAPI not installed. Install with: pip install fastapi uvicorn")
+    sys.exit(1)
+
+sys.path.insert(0, "/Users/hanemrayess/Desktop/HANEMM/backend/src")
+
+from config.loader import load_config, validate_config
+from observability.logging import configure_logging, RequestIdMiddleware
+from auth.session import require_merchant
+
+_config = load_config()
+configure_logging(environment=_config.environment)
+logger = logging.getLogger(__name__)
+
+
+def _db_session():
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from database.models import Base
+    config = load_config()
+    engine = create_engine(config.database_url)
+    Base.metadata.create_all(engine)
+    return sessionmaker(bind=engine)()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Starting Member Plus backend...")
+    try:
+        config = load_config()
+        validate_config(config)
+        logger.info("Configuration loaded. Environment: %s", config.environment)
+    except RuntimeError as e:
+        logger.error("Configuration validation failed: %s", e)
+        raise
+
+    try:
+        from scheduler.runner import start as start_scheduler, stop as stop_scheduler
+        start_scheduler()
+    except Exception:
+        logger.info("Scheduler not available")
+        stop_scheduler = lambda: None
+
+    try:
+        yield
+    finally:
+        stop_scheduler()
+        logger.info("Member Plus backend stopped")
+
+
+app = FastAPI(
+    title="Member Plus",
+    description="Salla Partner App — Paid membership programs for merchants",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+app.add_middleware(RequestIdMiddleware)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_config.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ---------------------------------------------------------------------------
+# Health
+# ---------------------------------------------------------------------------
+@app.get("/health")
+async def health():
+    return {"status": "healthy", "version": "1.0.0"}
+
+
+# ---------------------------------------------------------------------------
+# Dashboard access — PRD Appendix B
+# ---------------------------------------------------------------------------
+from auth.access import router as access_router
+app.include_router(access_router)
+
+
+# ---------------------------------------------------------------------------
+# Webhooks — PRD §16 (idempotent pipeline)
+# ---------------------------------------------------------------------------
+@app.post("/webhooks/salla")
+async def handle_webhook(request: Request):
+    from webhooks.pipeline import receive_and_store
+
+    body = await request.body()
+    signature = request.headers.get("X-Salla-Signature")
+    config = load_config()
+    db = _db_session()
+
+    try:
+        status, response_body = receive_and_store(
+            db, body, signature, config.salla_webhook_secret,
+        )
+        return JSONResponse(response_body, status_code=status)
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# Merchant API — /api/v1/merchant/* (PRD §18.1)
+# ---------------------------------------------------------------------------
+@app.get("/api/v1/merchant/overview")
+async def merchant_overview(
+    period: str = Query(default="30d"),
+    merchant_id: str = Depends(require_merchant),
+):
+    db = _db_session()
+    try:
+        from database.models import Merchant, Member
+        merchant = db.query(Merchant).filter(Merchant.id == merchant_id).first()
+        if not merchant:
+            raise HTTPException(404, "Merchant not found")
+
+        active_count = db.query(Member).filter(
+            Member.merchant_id == merchant_id,
+            Member.status == "active",
+        ).count()
+
+        return {
+            "store_name": merchant.store_name,
+            "status": merchant.status,
+            "our_plan": merchant.our_plan,
+            "trial_ends_at": merchant.trial_ends_at.isoformat() if merchant.trial_ends_at else None,
+            "setup_completed": merchant.setup_completed,
+            "setup_step": merchant.setup_step,
+            "member_count": active_count,
+            "period": period,
+        }
+    finally:
+        db.close()
+
+
+@app.get("/api/v1/merchant/members")
+async def merchant_members(
+    tier: str = Query(None),
+    status: str = Query(None),
+    page: int = Query(1),
+    per_page: int = Query(50),
+    merchant_id: str = Depends(require_merchant),
+):
+    db = _db_session()
+    try:
+        from database.models import Member, MembershipPlan
+        query = db.query(Member).filter(Member.merchant_id == merchant_id)
+
+        if tier:
+            plan_ids = [p.id for p in db.query(MembershipPlan).filter(
+                MembershipPlan.merchant_id == merchant_id,
+                MembershipPlan.tier == tier,
+            ).all()]
+            query = query.filter(Member.plan_id.in_(plan_ids))
+        if status:
+            query = query.filter(Member.status == status)
+
+        total = query.count()
+        members = query.order_by(Member.created_at.desc()).offset(
+            (page - 1) * per_page
+        ).limit(per_page).all()
+
+        return {
+            "members": [
+                {
+                    "id": m.id,
+                    "salla_customer_id": m.salla_customer_id,
+                    "status": m.status,
+                    "subscribed_price": str(m.subscribed_price),
+                    "current_period_end": m.current_period_end.isoformat() if m.current_period_end else None,
+                    "is_at_risk": m.is_at_risk,
+                    "total_saved_sar": str(m.total_saved_sar),
+                    "free_shipping_used": m.free_shipping_used,
+                    "free_shipping_quota": m.free_shipping_quota,
+                    "created_at": m.created_at.isoformat() if m.created_at else None,
+                }
+                for m in members
+            ],
+            "total": total,
+            "page": page,
+        }
+    finally:
+        db.close()
+
+
+@app.get("/api/v1/merchant/plans")
+async def merchant_plans(merchant_id: str = Depends(require_merchant)):
+    db = _db_session()
+    try:
+        from database.models import MembershipPlan, PlanPriceVersion
+        plans = db.query(MembershipPlan).filter(
+            MembershipPlan.merchant_id == merchant_id,
+        ).order_by(MembershipPlan.tier).all()
+
+        return {
+            "plans": [
+                {
+                    "id": p.id,
+                    "tier": p.tier,
+                    "display_name_ar": p.display_name_ar,
+                    "display_name_en": p.display_name_en,
+                    "price": str(p.price),
+                    "status": p.status,
+                    "discount_pct": str(p.discount_pct),
+                    "free_shipping_uses": p.free_shipping_uses,
+                    "gift_name_ar": p.gift_name_ar,
+                    "gift_name_en": p.gift_name_en,
+                    "salla_group_id": p.salla_group_id,
+                }
+                for p in plans
+            ],
+        }
+    finally:
+        db.close()
+
+
+@app.get("/api/v1/merchant/settings")
+async def merchant_settings(merchant_id: str = Depends(require_merchant)):
+    db = _db_session()
+    try:
+        from database.models import Merchant
+        m = db.query(Merchant).filter(Merchant.id == merchant_id).first()
+        if not m:
+            raise HTTPException(404, "Merchant not found")
+        return {
+            "store_name": m.store_name,
+            "status": m.status,
+            "our_plan": m.our_plan,
+            "setup_completed": m.setup_completed,
+            "dashboard_language": m.dashboard_language,
+        }
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# Today's Focus Card — PRD §22.3
+# ---------------------------------------------------------------------------
+@app.get("/api/v1/merchant/focus")
+async def todays_focus(merchant_id: str = Depends(require_merchant)):
+    """PRD §22.3: ONE single contextual action. Priority order:
+    1. Gift not configured within 3 days of month end
+    2. Members in grace period near expiry
+    3. Plan limit within 10 members
+    4. Zero members after 7 days live
+    5. All good
+    """
+    from datetime import datetime, timedelta
+    db = _db_session()
+    try:
+        from database.models import Merchant, Member, GiftCoupon, MembershipPlan
+
+        m = db.query(Merchant).filter(Merchant.id == merchant_id).first()
+        if not m:
+            raise HTTPException(404, "Merchant not found")
+
+        now = datetime.utcnow()
+        next_month = (now.replace(day=28) + timedelta(days=5)).replace(day=1)
+        days_to_month_end = (next_month - now).days
+
+        # Priority 1: Gift not configured within 3 days of month end
+        if days_to_month_end <= 3:
+            next_month_str = next_month.strftime("%Y-%m")
+            gold_plan = db.query(MembershipPlan).filter(
+                MembershipPlan.merchant_id == merchant_id,
+                MembershipPlan.tier == "gold",
+                MembershipPlan.status == "active",
+            ).first()
+            if gold_plan:
+                has_gift_config = db.query(GiftCoupon).filter(
+                    GiftCoupon.merchant_id == merchant_id,
+                    GiftCoupon.month == next_month_str,
+                ).first()
+                if not has_gift_config:
+                    return {
+                        "priority": 1,
+                        "type": "gift_not_configured",
+                        "days_left": days_to_month_end,
+                        "message_ar": f"الهدية الشهرية — {days_to_month_end} يوم متبقي",
+                        "message_en": f"Configure next month's gift — {days_to_month_end} days left",
+                        "action": "gift-config",
+                    }
+
+        # Priority 2: Members in grace period near expiry
+        grace_count = db.query(Member).filter(
+            Member.merchant_id == merchant_id,
+            Member.status == "grace_period",
+        ).count()
+        if grace_count > 0:
+            return {
+                "priority": 2,
+                "type": "grace_expiry",
+                "count": grace_count,
+                "message_ar": f"{grace_count} عضو قد يفقد الوصول اليوم",
+                "message_en": f"{grace_count} member(s) may lose access today",
+                "action": "members",
+            }
+
+        # Priority 3: Plan limit within 10 members
+        active_count = db.query(Member).filter(
+            Member.merchant_id == merchant_id,
+            Member.status == "active",
+        ).count()
+        plan_limits = {"starter": 50, "pro": 200, "unlimited": 99999}
+        limit = plan_limits.get(m.our_plan or "starter", 50)
+        if limit - active_count <= 10 and limit != 99999:
+            return {
+                "priority": 3,
+                "type": "plan_limit",
+                "current": active_count,
+                "limit": limit,
+                "message_ar": "اقتراب من الحد — قم بترقية خطتك",
+                "message_en": "Approaching limit — upgrade your plan",
+                "action": "settings",
+            }
+
+        # Priority 4: Zero members after 7 days live
+        if m.setup_completed and active_count == 0:
+            days_live = (now - m.activated_at).days if m.activated_at else 0
+            if days_live >= 7:
+                return {
+                    "priority": 4,
+                    "type": "zero_members",
+                    "days_live": days_live,
+                    "message_ar": "أضف رابط العضوية إلى تنقل المتجر",
+                    "message_en": "Add membership link to store navigation",
+                    "action": "promote",
+                }
+
+        # Priority 5: All good
+        return {
+            "priority": 5,
+            "type": "all_good",
+            "message_ar": "لا يوجد إجراء مطلوب اليوم",
+            "message_en": "No action required today",
+            "action": None,
+        }
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# Member Profile — PRD §18.1
+# ---------------------------------------------------------------------------
+@app.get("/api/v1/merchant/members/{member_id}")
+async def member_profile(
+    member_id: str,
+    merchant_id: str = Depends(require_merchant),
+):
+    """PRD §18.1: Full history — charges, benefits, orders, total savings."""
+    db = _db_session()
+    try:
+        from database.models import (
+            Member, MembershipPlan, BenefitEvent,
+            GiftCoupon, FreeShippingCoupon,
+        )
+
+        member = db.query(Member).filter(
+            Member.id == member_id,
+            Member.merchant_id == merchant_id,
+        ).first()
+        if not member:
+            raise HTTPException(404, "Member not found")
+
+        plan = db.query(MembershipPlan).filter(
+            MembershipPlan.id == member.plan_id,
+        ).first()
+
+        benefit_events = db.query(BenefitEvent).filter(
+            BenefitEvent.member_id == member_id,
+        ).order_by(BenefitEvent.created_at.desc()).limit(50).all()
+
+        gift_history = db.query(GiftCoupon).filter(
+            GiftCoupon.member_id == member_id,
+        ).order_by(GiftCoupon.month.desc()).all()
+
+        shipping_history = db.query(FreeShippingCoupon).filter(
+            FreeShippingCoupon.member_id == member_id,
+        ).order_by(FreeShippingCoupon.month.desc()).all()
+
+        return {
+            "id": member.id,
+            "salla_customer_id": member.salla_customer_id,
+            "status": member.status,
+            "plan": {
+                "tier": plan.tier if plan else None,
+                "display_name_ar": plan.display_name_ar if plan else None,
+                "display_name_en": plan.display_name_en if plan else None,
+            },
+            "subscribed_price": str(member.subscribed_price),
+            "current_period_end": member.current_period_end.isoformat() if member.current_period_end else None,
+            "next_renewal_at": member.next_renewal_at.isoformat() if member.next_renewal_at else None,
+            "grace_period_ends_at": member.grace_period_ends_at.isoformat() if member.grace_period_ends_at else None,
+            "is_at_risk": member.is_at_risk,
+            "total_saved_sar": str(member.total_saved_sar),
+            "free_shipping_used": member.free_shipping_used,
+            "free_shipping_quota": member.free_shipping_quota,
+            "created_at": member.created_at.isoformat() if member.created_at else None,
+            "benefit_events": [
+                {
+                    "event_type": e.event_type,
+                    "amount_saved": str(e.amount_saved) if e.amount_saved else None,
+                    "salla_order_id": e.salla_order_id,
+                    "created_at": e.created_at.isoformat() if e.created_at else None,
+                }
+                for e in benefit_events
+            ],
+            "gift_history": [
+                {
+                    "month": g.month,
+                    "gift_type": g.gift_type,
+                    "status": g.status,
+                    "coupon_code": g.coupon_code,
+                }
+                for g in gift_history
+            ],
+            "shipping_history": [
+                {
+                    "month": s.month,
+                    "quota": s.quota,
+                    "used_count": s.used_count,
+                    "status": s.status,
+                }
+                for s in shipping_history
+            ],
+        }
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# Gift Management — PRD §8.4
+# ---------------------------------------------------------------------------
+@app.get("/api/v1/merchant/gift-coupons")
+async def gift_coupons_list(
+    month: str = Query(None),
+    merchant_id: str = Depends(require_merchant),
+):
+    """PRD §18.1: Gift config + history + redemption stats."""
+    db = _db_session()
+    try:
+        from database.models import GiftCoupon
+        query = db.query(GiftCoupon).filter(GiftCoupon.merchant_id == merchant_id)
+        if month:
+            query = query.filter(GiftCoupon.month == month)
+        coupons = query.order_by(GiftCoupon.month.desc()).limit(200).all()
+
+        return {
+            "coupons": [
+                {
+                    "id": c.id,
+                    "member_id": c.member_id,
+                    "month": c.month,
+                    "coupon_code": c.coupon_code,
+                    "gift_type": c.gift_type,
+                    "gift_description_ar": c.gift_description_ar,
+                    "gift_description_en": c.gift_description_en,
+                    "status": c.status,
+                    "expires_at": c.expires_at.isoformat() if c.expires_at else None,
+                }
+                for c in coupons
+            ],
+        }
+    finally:
+        db.close()
+
+
+@app.post("/api/v1/merchant/gift-coupons/config")
+async def configure_gift(
+    payload: dict = Body(...),
+    merchant_id: str = Depends(require_merchant),
+):
+    """PRD §18.1: Configure next month's gift. Validates category has products."""
+    # Phase 2 stub — full Salla category validation in Phase 3
+    return {
+        "status": "configured",
+        "gift_type": payload.get("gift_type"),
+        "gift_value": payload.get("gift_value"),
+        "gift_description_ar": payload.get("gift_description_ar"),
+        "gift_description_en": payload.get("gift_description_en"),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Activity Log — PRD §14.10, §18.1
+# ---------------------------------------------------------------------------
+@app.get("/api/v1/merchant/activity")
+async def activity_log(
+    event_type: str = Query(None),
+    member_id: str = Query(None),
+    page: int = Query(1),
+    per_page: int = Query(50),
+    merchant_id: str = Depends(require_merchant),
+):
+    """PRD §18.1: Chronological feed of all events."""
+    db = _db_session()
+    try:
+        from database.models import ActivityLog
+        query = db.query(ActivityLog).filter(ActivityLog.merchant_id == merchant_id)
+        if event_type:
+            query = query.filter(ActivityLog.event_type == event_type)
+        if member_id:
+            query = query.filter(ActivityLog.member_id == member_id)
+
+        total = query.count()
+        events = query.order_by(ActivityLog.created_at.desc()).offset(
+            (page - 1) * per_page
+        ).limit(per_page).all()
+
+        return {
+            "events": [
+                {
+                    "id": e.id,
+                    "event_type": e.event_type,
+                    "member_id": e.member_id,
+                    "metadata": e.metadata_json,
+                    "created_at": e.created_at.isoformat() if e.created_at else None,
+                }
+                for e in events
+            ],
+            "total": total,
+            "page": page,
+        }
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# Export — PRD §18.1
+# ---------------------------------------------------------------------------
+@app.get("/api/v1/merchant/export")
+async def merchant_export(
+    type: str = Query("members"),
+    merchant_id: str = Depends(require_merchant),
+):
+    """PRD §18.1: CSV download for members/revenue/benefits/coupons."""
+    import csv
+    import io
+    from fastapi.responses import StreamingResponse
+
+    db = _db_session()
+    try:
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        if type == "members":
+            from database.models import Member
+            members = db.query(Member).filter(Member.merchant_id == merchant_id).all()
+            writer.writerow(["id", "salla_customer_id", "status", "subscribed_price",
+                            "total_saved_sar", "created_at"])
+            for m in members:
+                writer.writerow([m.id, m.salla_customer_id, m.status,
+                               str(m.subscribed_price), str(m.total_saved_sar),
+                               m.created_at.isoformat() if m.created_at else ""])
+
+        output.seek(0)
+        return StreamingResponse(
+            iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": f"attachment; filename={type}_export.csv"},
+        )
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# Member State — PRD §18.2 (lightweight, for App Snippet)
+# ---------------------------------------------------------------------------
+@app.get("/api/v1/member/state")
+async def member_state(request: Request):
+    """PRD §18.2: Lightweight endpoint. App Snippet uses on every page.
+    SessionStorage cached 5 min. Returns member status + active benefits.
+
+    Auth via salla_customer_id query param (from Twilight SDK).
+    """
+    salla_customer_id = request.query_params.get("salla_customer_id")
+    store_id = request.query_params.get("store_id")
+
+    if not salla_customer_id or not store_id:
+        return {"is_member": False}
+
+    db = _db_session()
+    try:
+        from database.models import Merchant, Member, MembershipPlan
+
+        merchant = db.query(Merchant).filter(
+            Merchant.salla_store_id == int(store_id)
+        ).first()
+        if not merchant:
+            return {"is_member": False}
+
+        member = db.query(Member).filter(
+            Member.merchant_id == merchant.id,
+            Member.salla_customer_id == int(salla_customer_id),
+            Member.status.in_(["active", "grace_period"]),
+        ).first()
+
+        if not member:
+            # Check if former member (for win-back)
+            former = db.query(Member).filter(
+                Member.merchant_id == merchant.id,
+                Member.salla_customer_id == int(salla_customer_id),
+                Member.status.in_(["expired", "cancelled"]),
+            ).first()
+            return {
+                "is_member": False,
+                "is_former_member": former is not None,
+                "former_tier": former.plan_id if former else None,
+                "total_saved": str(former.total_saved_sar) if former else "0",
+            }
+
+        plan = db.query(MembershipPlan).filter(
+            MembershipPlan.id == member.plan_id,
+        ).first()
+
+        return {
+            "is_member": True,
+            "status": member.status,
+            "tier": plan.tier if plan else None,
+            "display_name_ar": plan.display_name_ar if plan else None,
+            "display_name_en": plan.display_name_en if plan else None,
+            "discount_pct": str(plan.discount_pct) if plan else "0",
+            "free_shipping_remaining": max(0, member.free_shipping_quota - member.free_shipping_used),
+            "current_period_end": member.current_period_end.isoformat() if member.current_period_end else None,
+            "total_saved_sar": str(member.total_saved_sar),
+        }
+    except (ValueError, TypeError):
+        return {"is_member": False}
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# Setup Wizard — PRD §8.2, §43.4
+# ---------------------------------------------------------------------------
+@app.get("/api/v1/merchant/setup/state")
+async def setup_state(merchant_id: str = Depends(require_merchant)):
+    db = _db_session()
+    try:
+        from database.models import Merchant
+        m = db.query(Merchant).filter(Merchant.id == merchant_id).first()
+        if not m:
+            raise HTTPException(404, "Merchant not found")
+        return {
+            "setup_completed": m.setup_completed,
+            "setup_step": m.setup_step,
+            "total_steps": 5,
+        }
+    finally:
+        db.close()
+
+
+@app.post("/api/v1/merchant/setup/complete")
+async def setup_complete(
+    payload: dict = Body(...),
+    merchant_id: str = Depends(require_merchant),
+):
+    """PRD §43.4 Step 4 — Review & Launch. Creates Silver + Gold plans."""
+    db = _db_session()
+    try:
+        from database.models import Merchant, MembershipPlan, PlanPriceVersion
+
+        merchant = db.query(Merchant).filter(Merchant.id == merchant_id).first()
+        if not merchant:
+            raise HTTPException(404, "Merchant not found")
+
+        silver = payload.get("silver", {})
+        gold = payload.get("gold", {})
+
+        if not payload.get("consent_terms") or not payload.get("consent_cancel"):
+            raise HTTPException(400, "Both consent checkboxes required (PRD §43.4 Step 4)")
+
+        # Validate Gold > Silver
+        s_disc = float(silver.get("discount_pct", 0))
+        g_disc = float(gold.get("discount_pct", 0))
+        if g_disc <= s_disc:
+            raise HTTPException(400, "Gold discount must exceed Silver")
+
+        for tier_name, config in [("silver", silver), ("gold", gold)]:
+            plan = db.query(MembershipPlan).filter(
+                MembershipPlan.merchant_id == merchant_id,
+                MembershipPlan.tier == tier_name,
+            ).first()
+
+            data = {
+                "display_name_ar": config.get("display_name_ar", ""),
+                "display_name_en": config.get("display_name_en", ""),
+                "price": float(config.get("price", 0)),
+                "discount_pct": float(config.get("discount_pct", 0)),
+                "free_shipping_uses": int(config.get("free_shipping_uses", 0)),
+                "gift_name_ar": config.get("gift_name_ar", "الهدية الشهرية"),
+                "gift_name_en": config.get("gift_name_en", "Monthly Gift"),
+            }
+
+            if plan:
+                for k, v in data.items():
+                    setattr(plan, k, v)
+            else:
+                plan = MembershipPlan(merchant_id=merchant_id, tier=tier_name, **data)
+                db.add(plan)
+                db.flush()
+
+            # Initial price version
+            exists = db.query(PlanPriceVersion).filter(
+                PlanPriceVersion.plan_id == plan.id,
+                PlanPriceVersion.effective_to == None,
+            ).first()
+            if not exists:
+                db.add(PlanPriceVersion(plan_id=plan.id, price=data["price"]))
+
+        merchant.setup_completed = True
+        merchant.setup_step = 5
+        db.commit()
+
+        return {"setup_completed": True, "message": "Program launched"}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        db.rollback()
+        logger.exception("setup failed: %s", exc)
+        raise HTTPException(500, "Setup failed")
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# Public — PRD §18.2
+# ---------------------------------------------------------------------------
+@app.get("/api/v1/store/{store_id}/plans")
+async def public_plans(store_id: str):
+    db = _db_session()
+    try:
+        from database.models import Merchant, MembershipPlan
+        merchant = db.query(Merchant).filter(
+            Merchant.salla_store_id == int(store_id)
+        ).first() if store_id.isdigit() else None
+
+        if not merchant or merchant.status == "cancelled":
+            raise HTTPException(404, "Store not found")
+
+        if not merchant.setup_completed:
+            return {"store_name": merchant.store_name, "coming_soon": True, "plans": []}
+
+        plans = db.query(MembershipPlan).filter(
+            MembershipPlan.merchant_id == merchant.id,
+            MembershipPlan.status == "active",
+        ).order_by(MembershipPlan.price).all()
+
+        return {
+            "store_name": merchant.store_name,
+            "coming_soon": False,
+            "plans": [
+                {
+                    "tier": p.tier,
+                    "display_name_ar": p.display_name_ar,
+                    "display_name_en": p.display_name_en,
+                    "price": str(p.price),
+                    "discount_pct": str(p.discount_pct),
+                    "free_shipping_uses": p.free_shipping_uses,
+                }
+                for p in plans
+            ],
+        }
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# Dev-only demo login (NOT in production)
+# ---------------------------------------------------------------------------
+import os
+if os.getenv("ENVIRONMENT") != "production":
+    @app.post("/api/v1/auth/demo")
+    async def demo_login():
+        """Creates a test merchant and returns a JWT token. Dev only."""
+        from datetime import timedelta
+        from auth.crypto import encrypt
+        from auth.jwt import create_jwt_token
+        from database.models import Merchant
+
+        db = _db_session()
+        try:
+            existing = db.query(Merchant).filter(Merchant.salla_store_id == 99999).first()
+            if existing:
+                return {"token": create_jwt_token(existing.id), "merchant_id": existing.id}
+
+            now = datetime.utcnow()
+            merchant = Merchant(
+                salla_store_id=99999,
+                access_token=encrypt("demo-tok"),
+                refresh_token=encrypt("demo-ref"),
+                store_name="متجر تجريبي",
+                status="trial",
+                trial_ends_at=now + timedelta(days=7),
+            )
+            db.add(merchant)
+            db.commit()
+            db.refresh(merchant)
+
+            token = create_jwt_token(merchant.id)
+            return {"token": token, "merchant_id": merchant.id}
+        finally:
+            db.close()
+
+    from datetime import datetime
+
+
+# ---------------------------------------------------------------------------
+# Root
+# ---------------------------------------------------------------------------
+@app.get("/")
+async def root():
+    return {
+        "app": "Member Plus",
+        "version": "1.0.0",
+        "api": "/api/v1/",
+        "health": "/health",
+        "webhooks": "/webhooks/salla",
+    }
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

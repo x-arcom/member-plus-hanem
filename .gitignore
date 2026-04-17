@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+venv/
+.venv/
+
+# Environment
+.env
+*.db
+*.sqlite
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Build
+node_modules/
+dist/
+build/
+
+# Member Plus specific
+backend/memberplus_*.db
+backend/src/app-entrypoint/memberplus_*.db

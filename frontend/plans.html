@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>خطط العضوية — Member Plus</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .plan-card {
+            border: 2px solid var(--color-border); border-radius: var(--radius-lg);
+            padding: var(--space-5); margin-bottom: var(--space-4);
+        }
+        .plan-card--silver { border-color: #7986cb; }
+        .plan-card--gold   { border-color: #ffc107; }
+        .plan-card__head { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4); }
+        .plan-card__tier { font-size: var(--font-size-xs); letter-spacing: 0.12em; text-transform: uppercase; font-weight: var(--font-weight-bold); }
+        .plan-card--silver .plan-card__tier { color: #303f9f; }
+        .plan-card--gold .plan-card__tier { color: #f57f17; }
+        .benefit-tag { display: inline-flex; align-items: center; gap: var(--space-1);
+            padding: var(--space-1) var(--space-3); border-radius: var(--radius-pill);
+            font-size: var(--font-size-xs); background: var(--color-surface-muted); }
+        .benefit-tags { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-3); }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar__brand">
+                <img src="assets/logo.png" alt="Member Plus" style="height:28px" onerror="this.style.display='none'">
+                <span class="logo__text">Member Plus</span>
+            </div>
+            <nav class="sidebar__nav">
+                <a class="sidebar__link" href="dashboard.html"><span class="icon">📊</span> <span id="nav-dashboard">لوحة التحكم</span></a>
+                <a class="sidebar__link" href="plans.html" aria-current="page"><span class="icon">🏷️</span> <span id="nav-plans">خطط العضوية</span></a>
+                <a class="sidebar__link" href="members.html"><span class="icon">👥</span> <span id="nav-members">الأعضاء</span></a>
+                <a class="sidebar__link" href="settings.html"><span class="icon">⚙️</span> <span id="nav-settings">الإعدادات</span></a>
+            </nav>
+            <div class="sidebar__footer">
+                <button class="sidebar__link" id="logout-btn" type="button"><span class="icon">⎋</span> <span id="nav-logout">تسجيل خروج</span></button>
+            </div>
+        </aside>
+        <div class="sidebar__overlay" id="sidebar-overlay"></div>
+
+        <div class="app-main">
+            <header class="app-topbar">
+                <div style="display:flex;align-items:center;gap:var(--space-3);">
+                    <button class="sidebar__toggle" id="sidebar-toggle" type="button" aria-label="Toggle menu">☰</button>
+                    <span class="app-topbar__title" id="topbar-title">خطط العضوية</span>
+                </div>
+                <div class="app-topbar__actions">
+                    <button class="btn btn--ghost" id="lang-btn" type="button">EN / ع</button>
+                </div>
+            </header>
+
+            <main class="container">
+                <div id="state-loading" class="loading-block"><div class="spinner"></div><p>جاري التحميل…</p></div>
+                <div id="state-error" class="alert alert--danger" role="alert" hidden></div>
+
+                <div id="state-empty" hidden>
+                    <div class="empty">
+                        <div class="empty__icon">🏷️</div>
+                        <div class="empty__title" id="empty-title">لم يتم إعداد الخطط بعد</div>
+                        <p class="empty__body" id="empty-body">أكمل معالج الإعداد لإنشاء باقتي الفضية والذهبية.</p>
+                        <a class="btn btn--primary" id="empty-cta" href="wizard.html">إكمال الإعداد</a>
+                    </div>
+                </div>
+
+                <div id="state-data" hidden></div>
+            </main>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        const T = {
+            ar: {
+                topbar: 'خطط العضوية',
+                navDashboard: 'لوحة التحكم', navPlans: 'خطط العضوية', navMembers: 'الأعضاء', navSettings: 'الإعدادات', navLogout: 'تسجيل خروج',
+                emptyTitle: 'لم يتم إعداد الخطط بعد', emptyBody: 'أكمل معالج الإعداد لإنشاء باقتي الفضية والذهبية.', emptyCta: 'إكمال الإعداد',
+                price: 'السعر', discount: 'الخصم', shipping: 'شحن مجاني', duration: 'المدة',
+                gift: 'هدية شهرية', early: 'وصول مبكر', badge: 'شارة',
+                perMonth: '/شهر', days: 'يوم', times: 'مرّة',
+                edit: 'تعديل', save: 'حفظ', cancel: 'إلغاء', saved: 'تم الحفظ',
+                active: 'نشطة', inactive: 'متوقفة', activate: 'تفعيل', deactivate: 'إيقاف',
+                silverNote: 'الفضية: خصم + شحن فقط. لا هدية شهرية أو شارة.',
+            },
+            en: {
+                topbar: 'Membership Plans',
+                navDashboard: 'Dashboard', navPlans: 'Membership Plans', navMembers: 'Members', navSettings: 'Settings', navLogout: 'Sign out',
+                emptyTitle: 'Plans not set up yet', emptyBody: 'Complete the setup wizard to create your Silver and Gold tiers.', emptyCta: 'Continue setup',
+                price: 'Price', discount: 'Discount', shipping: 'Free shipping', duration: 'Duration',
+                gift: 'Monthly gift', early: 'Early access', badge: 'Badge',
+                perMonth: '/mo', days: 'days', times: '/mo',
+                edit: 'Edit', save: 'Save', cancel: 'Cancel', saved: 'Saved',
+                active: 'Active', inactive: 'Inactive', activate: 'Activate', deactivate: 'Deactivate',
+                silverNote: 'Silver: discount + shipping only. No monthly gift or badge.',
+            }
+        };
+
+        let lang = MP.getLang();
+        let plans = [];
+        MP.requireAuth();
+        function tr() { return T[lang]; }
+
+        function applyLang() {
+            const t = tr();
+            document.title = t.topbar + ' — Member Plus';
+            document.getElementById('topbar-title').textContent = t.topbar;
+            document.getElementById('nav-dashboard').textContent = t.navDashboard;
+            document.getElementById('nav-plans').textContent = t.navPlans;
+            document.getElementById('nav-members').textContent = t.navMembers;
+            document.getElementById('nav-settings').textContent = t.navSettings;
+            document.getElementById('nav-logout').textContent = t.navLogout;
+            document.getElementById('empty-title').textContent = t.emptyTitle;
+            document.getElementById('empty-body').textContent = t.emptyBody;
+            document.getElementById('empty-cta').textContent = t.emptyCta;
+            MP.setLang(lang);
+            if (plans.length) renderPlans();
+        }
+
+        // Sidebar
+        document.getElementById('sidebar-toggle').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('is-open'));
+        document.getElementById('sidebar-overlay').addEventListener('click', () => document.getElementById('sidebar').classList.remove('is-open'));
+        document.querySelectorAll('.sidebar__nav a').forEach(a => {
+            a.addEventListener('click', (e) => {
+                const token = MP.getToken();
+                if (token && !a.href.includes('token=')) {
+                    e.preventDefault();
+                    window.location.href = a.href + (a.href.includes('?') ? '&' : '?') + 'token=' + token + '&lang=' + lang;
+                }
+            });
+        });
+        document.getElementById('lang-btn').addEventListener('click', () => { lang = lang === 'ar' ? 'en' : 'ar'; applyLang(); });
+        document.getElementById('logout-btn').addEventListener('click', MP.logout);
+
+        function show(which) {
+            ['state-loading', 'state-error', 'state-empty', 'state-data'].forEach(id => {
+                document.getElementById(id).hidden = id !== which;
+            });
+        }
+
+        async function load() {
+            show('state-loading');
+            try {
+                const { plans: p } = await MP.api('/api/merchant/plans');
+                plans = p.filter(x => x.tier === 'silver' || x.tier === 'gold');
+                if (!plans.length) { show('state-empty'); return; }
+                renderPlans();
+                show('state-data');
+            } catch (err) {
+                document.getElementById('state-error').textContent = MP.errorMessage(err, lang);
+                show('state-error');
+            }
+        }
+
+        function benefitTags(p, t) {
+            const tags = [];
+            if (p.discount_percent && Number(p.discount_percent) > 0) tags.push(`🏷️ ${Math.round(Number(p.discount_percent))}%`);
+            if (p.free_shipping_quota && Number(p.free_shipping_quota) > 0) tags.push(`🚚 ${p.free_shipping_quota}${t.times}`);
+            if (p.monthly_gift_enabled) tags.push(`🎁 ${t.gift}`);
+            if (p.early_access_enabled) tags.push(`⚡ ${t.early}`);
+            if (p.badge_enabled) tags.push(`⭐ ${t.badge}`);
+            return tags;
+        }
+
+        function renderPlans() {
+            const t = tr();
+            const html = plans.map(p => {
+                const name = lang === 'ar' ? p.name_ar : p.name_en;
+                const tier = p.tier || 'generic';
+                const tags = benefitTags(p, t);
+                const statusPill = p.is_active
+                    ? `<span class="pill pill--success">${t.active}</span>`
+                    : `<span class="pill pill--neutral">${t.inactive}</span>`;
+                const toggleLabel = p.is_active ? t.deactivate : t.activate;
+                return `
+                    <article class="plan-card plan-card--${tier}">
+                        <div class="plan-card__head">
+                            <div>
+                                <div class="plan-card__tier">${tier.toUpperCase()}</div>
+                                <div style="font-size:var(--font-size-xl); font-weight:var(--font-weight-bold);">${name}</div>
+                            </div>
+                            <div style="text-align:end">
+                                <div style="font-size:var(--font-size-2xl); font-weight:var(--font-weight-bold); color:var(--color-brand);">${p.price} <span style="font-size:var(--font-size-sm); color:var(--color-text-secondary);">${p.currency}${t.perMonth}</span></div>
+                                <div style="margin-top:var(--space-1);">${statusPill}</div>
+                            </div>
+                        </div>
+                        <div class="card__grid">
+                            <div class="info-box"><span class="info-box__label">${t.discount}</span><span class="info-box__value">${p.discount_percent ? Math.round(Number(p.discount_percent)) + '%' : '—'}</span></div>
+                            <div class="info-box"><span class="info-box__label">${t.shipping}</span><span class="info-box__value">${p.free_shipping_quota || 0}${t.times}</span></div>
+                            <div class="info-box"><span class="info-box__label">${t.duration}</span><span class="info-box__value">${p.duration_days} ${t.days}</span></div>
+                        </div>
+                        ${tags.length ? `<div class="benefit-tags">${tags.map(tag => `<span class="benefit-tag">${tag}</span>`).join('')}</div>` : ''}
+                        <div class="cta-row" style="margin-top:var(--space-4);">
+                            <button class="btn btn--secondary" data-toggle="${p.id}" data-next="${!p.is_active}">${toggleLabel}</button>
+                        </div>
+                    </article>`;
+            }).join('');
+            document.getElementById('state-data').innerHTML = html;
+            document.querySelectorAll('[data-toggle]').forEach(btn => {
+                btn.addEventListener('click', () => togglePlan(btn.dataset.toggle, btn.dataset.next === 'true', btn));
+            });
+        }
+
+        async function togglePlan(id, nextActive, btn) {
+            MP.setLoading(btn, true);
+            try {
+                await MP.api(`/api/merchant/plans/${id}`, { method: 'PATCH', body: JSON.stringify({ is_active: nextActive }) });
+                MP.toast(tr().saved, 'success');
+                await load();
+            } catch (err) { MP.toast(MP.errorMessage(err, lang), 'danger'); }
+            finally { MP.setLoading(btn, false); }
+        }
+
+        applyLang();
+        load();
+    </script>
+</body>
+</html>

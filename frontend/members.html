@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الأعضاء — Member Plus</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .filter-bar { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-4); }
+        .filter-bar .btn { min-height: 38px; padding-block: var(--space-2); }
+        .filter-bar .btn[aria-pressed="true"] { background: var(--color-brand); color: var(--color-text-inverse); border-color: var(--color-brand); }
+        .share-link { background: var(--color-surface-muted); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md);
+            font-family: monospace; font-size: var(--font-size-sm); display: flex; gap: var(--space-3); align-items: center; justify-content: space-between; flex-wrap: wrap; }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar__brand">
+                <img src="assets/logo.png" alt="Member Plus" style="height:28px" onerror="this.style.display='none'">
+                <span class="logo__text">Member Plus</span>
+            </div>
+            <nav class="sidebar__nav">
+                <a class="sidebar__link" href="dashboard.html"><span class="icon">📊</span> <span id="nav-dashboard">لوحة التحكم</span></a>
+                <a class="sidebar__link" href="plans.html"><span class="icon">🏷️</span> <span id="nav-plans">خطط العضوية</span></a>
+                <a class="sidebar__link" href="members.html" aria-current="page"><span class="icon">👥</span> <span id="nav-members">الأعضاء</span></a>
+                <a class="sidebar__link" href="settings.html"><span class="icon">⚙️</span> <span id="nav-settings">الإعدادات</span></a>
+            </nav>
+            <div class="sidebar__footer">
+                <button class="sidebar__link" id="logout-btn" type="button"><span class="icon">⎋</span> <span id="nav-logout">تسجيل خروج</span></button>
+            </div>
+        </aside>
+        <div class="sidebar__overlay" id="sidebar-overlay"></div>
+
+        <div class="app-main">
+            <header class="app-topbar">
+                <div style="display:flex;align-items:center;gap:var(--space-3);">
+                    <button class="sidebar__toggle" id="sidebar-toggle" type="button" aria-label="Toggle menu">☰</button>
+                    <span class="app-topbar__title" id="topbar-title">الأعضاء</span>
+                </div>
+                <div class="app-topbar__actions">
+                    <button class="btn btn--ghost" id="lang-btn" type="button">EN / ع</button>
+                </div>
+            </header>
+
+            <main class="container">
+                <!-- Share links -->
+                <section class="card" aria-labelledby="share-title">
+                    <div class="card__header"><div class="card__title" id="share-title">روابط للمشاركة مع عملائك</div></div>
+                    <p style="color:var(--color-text-secondary); font-size:var(--font-size-sm); margin-bottom:var(--space-3);" id="share-desc">رابط الانضمام + رابط عرض العضوية للعملاء الحاليين.</p>
+                    <div class="share-link"><span id="share-url">—</span><button class="btn btn--secondary" id="copy-btn" type="button">نسخ</button></div>
+                    <p style="color:var(--color-text-secondary); font-size:var(--font-size-sm); margin-top:var(--space-3);" id="member-link-label">رابط "عضويتي":</p>
+                    <div class="share-link"><span id="member-url">—</span><button class="btn btn--secondary" id="copy-member-btn" type="button">نسخ</button></div>
+                </section>
+
+                <!-- Filters -->
+                <div class="filter-bar" role="group" aria-label="Status filter">
+                    <button class="btn btn--ghost" data-filter="" aria-pressed="true" id="filter-all">الكل</button>
+                    <button class="btn btn--ghost" data-filter="pending" aria-pressed="false" id="filter-pending">قيد التأكيد</button>
+                    <button class="btn btn--ghost" data-filter="active" aria-pressed="false" id="filter-active">نشط</button>
+                    <button class="btn btn--ghost" data-filter="grace" aria-pressed="false" id="filter-grace">فترة سماح</button>
+                    <button class="btn btn--ghost" data-filter="cancelled" aria-pressed="false" id="filter-cancelled">ملغى</button>
+                    <button class="btn btn--ghost" data-filter="expired" aria-pressed="false" id="filter-expired">منتهي</button>
+                </div>
+
+                <div id="state-loading" class="card"><div class="skeleton skeleton--line"></div><div class="skeleton skeleton--line"></div><div class="skeleton skeleton--line"></div></div>
+                <div id="state-error" class="card" hidden><div class="alert alert--danger" id="error-text"></div><button class="btn btn--secondary" id="retry-btn" type="button">إعادة</button></div>
+                <div id="state-empty" hidden>
+                    <div class="empty"><div class="empty__icon">👥</div><div class="empty__title" id="empty-title">لا يوجد أعضاء حتى الآن</div><p class="empty__body" id="empty-body">شارك رابط الانضمام أعلاه مع عملائك.</p></div>
+                </div>
+                <div id="state-data" class="card" hidden><table class="table" id="members-table"></table></div>
+            </main>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        const T = {
+            ar: {
+                topbar: 'الأعضاء',
+                navDashboard: 'لوحة التحكم', navPlans: 'خطط العضوية', navMembers: 'الأعضاء', navSettings: 'الإعدادات', navLogout: 'تسجيل خروج',
+                shareTitle: 'روابط للمشاركة مع عملائك', shareDesc: 'رابط الانضمام + رابط عرض العضوية.',
+                memberLinkLabel: 'رابط "عضويتي":', copy: 'نسخ', copied: 'تم النسخ',
+                filters: { all: 'الكل', pending: 'قيد التأكيد', active: 'نشط', grace: 'فترة سماح', cancelled: 'ملغى' },
+                emptyTitle: 'لا يوجد أعضاء حتى الآن', emptyBody: 'شارك رابط الانضمام أعلاه مع عملائك.',
+                retry: 'إعادة',
+                thName: 'الاسم', thPlan: 'الباقة', thPrice: 'السعر', thStatus: 'الحالة', thBenefits: 'المزايا', thDate: 'تاريخ', thActions: '',
+                benefitCount: (n) => `${n} مزايا`,
+                statusPending: 'قيد التأكيد', statusActive: 'نشط', statusGrace: 'فترة سماح',
+                statusCancelled: 'ملغى', statusExpired: 'منتهي',
+                confirm: 'تأكيد', cancel: 'إلغاء', renew: 'تجديد',
+                confirmDone: 'تم التفعيل', cancelDone: 'تم الإلغاء', renewDone: 'تم التجديد',
+                confirmAsk: 'تأكيد الدفع وتفعيل العضوية؟', cancelAsk: 'إلغاء هذا الاشتراك؟', renewAsk: 'تجديد لفترة جديدة؟',
+            },
+            en: {
+                topbar: 'Members',
+                navDashboard: 'Dashboard', navPlans: 'Membership Plans', navMembers: 'Members', navSettings: 'Settings', navLogout: 'Sign out',
+                shareTitle: 'Customer links', shareDesc: 'Enrollment link + member lookup link.',
+                memberLinkLabel: '"My membership" link:', copy: 'Copy', copied: 'Copied',
+                filters: { all: 'All', pending: 'Pending', active: 'Active', grace: 'Grace', cancelled: 'Cancelled' },
+                emptyTitle: 'No members yet', emptyBody: 'Share the enrollment link above with your customers.',
+                retry: 'Retry',
+                thName: 'Name', thPlan: 'Plan', thPrice: 'Price', thStatus: 'Status', thBenefits: 'Benefits', thDate: 'Enrolled', thActions: '',
+                benefitCount: (n) => `${n} issued`,
+                statusPending: 'Pending', statusActive: 'Active', statusGrace: 'Grace',
+                statusCancelled: 'Cancelled', statusExpired: 'Expired',
+                confirm: 'Confirm', cancel: 'Cancel', renew: 'Renew',
+                confirmDone: 'Activated', cancelDone: 'Cancelled', renewDone: 'Renewed',
+                confirmAsk: 'Confirm payment and activate?', cancelAsk: 'Cancel this subscription?', renewAsk: 'Renew for a new period?',
+            }
+        };
+
+        let lang = MP.getLang(); let members = []; let currentFilter = ''; let storeId = null;
+        MP.requireAuth();
+        function tr() { return T[lang]; }
+
+        function show(which) { ['state-loading','state-error','state-empty','state-data'].forEach(id => { document.getElementById(id).hidden = id !== which; }); }
+
+        function applyLang() {
+            const t = tr();
+            document.title = t.topbar + ' — Member Plus';
+            document.getElementById('topbar-title').textContent = t.topbar;
+            document.getElementById('nav-dashboard').textContent = t.navDashboard;
+            document.getElementById('nav-plans').textContent = t.navPlans;
+            document.getElementById('nav-members').textContent = t.navMembers;
+            document.getElementById('nav-settings').textContent = t.navSettings;
+            document.getElementById('nav-logout').textContent = t.navLogout;
+            document.getElementById('share-title').textContent = t.shareTitle;
+            document.getElementById('share-desc').textContent = t.shareDesc;
+            document.getElementById('member-link-label').textContent = t.memberLinkLabel;
+            document.getElementById('copy-btn').textContent = t.copy;
+            document.getElementById('copy-member-btn').textContent = t.copy;
+            document.getElementById('filter-all').textContent = t.filters.all;
+            document.getElementById('filter-pending').textContent = t.filters.pending;
+            document.getElementById('filter-active').textContent = t.filters.active;
+            document.getElementById('filter-grace').textContent = t.filters.grace;
+            document.getElementById('filter-cancelled').textContent = t.filters.cancelled;
+            document.getElementById('filter-expired').textContent = t.statusExpired;
+            document.getElementById('empty-title').textContent = t.emptyTitle;
+            document.getElementById('empty-body').textContent = t.emptyBody;
+            document.getElementById('retry-btn').textContent = t.retry;
+            MP.setLang(lang);
+            if (members.length) renderMembers(members);
+        }
+
+        // Sidebar
+        document.getElementById('sidebar-toggle').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('is-open'));
+        document.getElementById('sidebar-overlay').addEventListener('click', () => document.getElementById('sidebar').classList.remove('is-open'));
+        document.querySelectorAll('.sidebar__nav a').forEach(a => {
+            a.addEventListener('click', (e) => { const token = MP.getToken(); if (token && !a.href.includes('token=')) { e.preventDefault(); window.location.href = a.href + (a.href.includes('?') ? '&' : '?') + 'token=' + token + '&lang=' + lang; } });
+        });
+        document.getElementById('lang-btn').addEventListener('click', () => { lang = lang === 'ar' ? 'en' : 'ar'; applyLang(); });
+        document.getElementById('logout-btn').addEventListener('click', MP.logout);
+        document.getElementById('retry-btn').addEventListener('click', load);
+
+        async function copyText(text) { try { await navigator.clipboard.writeText(text); MP.toast(tr().copied, 'success'); } catch(_) { MP.toast('Copy failed', 'danger'); } }
+        document.getElementById('copy-btn').addEventListener('click', () => copyText(document.getElementById('share-url').textContent));
+        document.getElementById('copy-member-btn').addEventListener('click', () => copyText(document.getElementById('member-url').textContent));
+
+        async function loadStoreId() {
+            try { const p = await MP.api('/api/merchant/profile'); storeId = p.salla_store_id;
+                document.getElementById('share-url').textContent = `${location.origin}/customer.html?store=${encodeURIComponent(storeId)}`;
+                document.getElementById('member-url').textContent = `${location.origin}/member.html?store=${encodeURIComponent(storeId)}`;
+            } catch(_) {}
+        }
+
+        document.querySelectorAll('[data-filter]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-filter]').forEach(b => b.setAttribute('aria-pressed', 'false'));
+                btn.setAttribute('aria-pressed', 'true'); currentFilter = btn.dataset.filter; load();
+            });
+        });
+
+        async function load() {
+            show('state-loading');
+            try {
+                const q = currentFilter ? `?status=${currentFilter}` : '';
+                const { members: rows } = await MP.api('/api/merchant/members' + q);
+                members = rows;
+                if (!rows.length) { show('state-empty'); return; }
+                renderMembers(rows); show('state-data');
+            } catch (err) { document.getElementById('error-text').textContent = MP.errorMessage(err, lang); show('state-error'); }
+        }
+
+        function renderMembers(rows) {
+            const t = tr();
+            const fmt = (d) => d ? new Date(d).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-US') : '—';
+            const statusPill = (s) => {
+                const map = { pending: ['pill--warning', t.statusPending], active: ['pill--success', t.statusActive],
+                    grace: ['pill--warning', t.statusGrace], cancelled: ['pill--neutral', t.statusCancelled], expired: ['pill--danger', t.statusExpired] };
+                const [cls, label] = map[s] || ['pill--neutral', s];
+                return `<span class="pill ${cls}">${label}</span>`;
+            };
+            const actions = (m) => {
+                const p = [];
+                if (m.status === 'pending') p.push(`<button class="btn btn--primary" data-confirm="${m.subscription_id}">${t.confirm}</button>`);
+                if (['grace','expired','cancelled'].includes(m.status)) p.push(`<button class="btn btn--primary" data-renew="${m.subscription_id}">${t.renew}</button>`);
+                if (['pending','active','grace'].includes(m.status)) p.push(`<button class="btn btn--danger" data-cancel="${m.subscription_id}">${t.cancel}</button>`);
+                return p.join(' ') || '—';
+            };
+            const table = document.getElementById('members-table');
+            table.innerHTML = `<thead><tr><th>${t.thName}</th><th>${t.thPlan}</th><th>${t.thPrice}</th><th>${t.thStatus}</th><th>${t.thBenefits}</th><th>${t.thDate}</th><th></th></tr></thead>
+                <tbody>${rows.map(m => {
+                    const benefits = (m.benefit_count > 0) ? `<span class="pill pill--info">${t.benefitCount(m.benefit_count)}</span>` : '—';
+                    return `<tr><td>${m.customer.name}<br><small style="color:var(--color-text-secondary)">${m.customer.email}</small></td>
+                        <td>${m.plan.name}</td><td>${m.price_at_enrollment} ${m.plan.currency}</td>
+                        <td>${statusPill(m.status)}</td><td>${benefits}</td><td>${fmt(m.enrolled_at)}</td><td>${actions(m)}</td></tr>`;
+                }).join('')}</tbody>`;
+            table.querySelectorAll('[data-confirm]').forEach(btn => btn.addEventListener('click', () => confirmMember(btn.dataset.confirm, btn)));
+            table.querySelectorAll('[data-cancel]').forEach(btn => btn.addEventListener('click', () => cancelMember(btn.dataset.cancel, btn)));
+            table.querySelectorAll('[data-renew]').forEach(btn => btn.addEventListener('click', () => renewMember(btn.dataset.renew, btn)));
+        }
+
+        async function confirmMember(id, btn) { if (!confirm(tr().confirmAsk)) return; MP.setLoading(btn, true); try { await MP.api(`/api/merchant/members/${id}/confirm`, { method: 'POST', body: '{}' }); MP.toast(tr().confirmDone, 'success'); await load(); } catch(e) { MP.toast(MP.errorMessage(e, lang), 'danger'); } finally { MP.setLoading(btn, false); } }
+        async function cancelMember(id, btn) { if (!confirm(tr().cancelAsk)) return; MP.setLoading(btn, true); try { await MP.api(`/api/merchant/members/${id}/cancel`, { method: 'POST', body: '{}' }); MP.toast(tr().cancelDone, 'success'); await load(); } catch(e) { MP.toast(MP.errorMessage(e, lang), 'danger'); } finally { MP.setLoading(btn, false); } }
+        async function renewMember(id, btn) { if (!confirm(tr().renewAsk)) return; MP.setLoading(btn, true); try { await MP.api(`/api/merchant/members/${id}/renew`, { method: 'POST', body: '{}' }); MP.toast(tr().renewDone, 'success'); await load(); } catch(e) { MP.toast(MP.errorMessage(e, lang), 'danger'); } finally { MP.setLoading(btn, false); } }
+
+        applyLang(); loadStoreId(); load();
+    </script>
+</body>
+</html>

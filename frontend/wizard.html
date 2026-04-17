@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إعداد برنامج العضوية — Member Plus</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .wizard-card { position: relative; max-width: 720px; }
+        .lang-toggle { position: absolute; top: var(--space-4); inset-inline-end: var(--space-4); }
+        .step { display: none; }
+        .step.is-active { display: block; }
+        .wizard-actions { display: flex; justify-content: space-between; gap: var(--space-3); margin-top: var(--space-6); }
+        .tier-summary {
+            background: var(--color-surface-muted); border-radius: var(--radius-md);
+            padding: var(--space-4); margin-bottom: var(--space-3);
+        }
+        .tier-summary h3 { font-size: var(--font-size-md); margin-bottom: var(--space-2); display: flex; justify-content: space-between; align-items: center; }
+        .tier-summary ul { list-style: none; font-size: var(--font-size-sm); color: var(--color-text-secondary); }
+        .tier-summary li { padding: var(--space-1) 0; }
+        .tier-summary li::before { content: '•'; margin-inline-end: var(--space-2); color: var(--color-brand); }
+        .checkbox-row { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
+        .checkbox-row input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--color-brand); }
+        .tier-badge { display: inline-block; padding: var(--space-1) var(--space-3); border-radius: var(--radius-pill);
+            font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); letter-spacing: 0.1em; text-transform: uppercase; }
+        .tier-badge--silver { background: #e8eaf6; color: #303f9f; }
+        .tier-badge--gold { background: #fff8e1; color: #f57f17; }
+    </style>
+</head>
+<body class="auth-shell">
+    <main class="auth-card wizard-card" aria-labelledby="wizard-title">
+        <button id="lang-btn" class="btn btn--ghost lang-toggle" type="button" aria-label="Toggle language">EN / ع</button>
+        <div style="text-align:center; margin-bottom:var(--space-3);">
+            <img src="assets/logo.png" alt="Member Plus" style="height:48px" onerror="this.style.display='none'">
+        </div>
+        <h1 id="wizard-title" style="text-align:center;">إعداد برنامج العضوية</h1>
+        <p class="subtitle" id="wizard-subtitle" style="color:var(--color-text-secondary); margin-bottom: var(--space-5); text-align:center;">
+            أعدّ باقتي الفضية والذهبية لعملائك
+        </p>
+
+        <div class="steps" role="list" aria-label="Setup progress">
+            <div class="steps__bar" data-step="1" role="listitem"></div>
+            <div class="steps__bar" data-step="2" role="listitem"></div>
+            <div class="steps__bar" data-step="3" role="listitem"></div>
+        </div>
+
+        <div id="state-loading" class="loading-block"><div class="spinner"></div><p id="loading-text">جاري التحميل…</p></div>
+        <div id="state-error" class="alert alert--danger" role="alert" hidden></div>
+
+        <div id="state-data" hidden>
+            <!-- Step 1: Silver -->
+            <section class="step" data-step="1" aria-labelledby="silver-title">
+                <h2 id="silver-title" style="font-size:var(--font-size-lg); margin-bottom:var(--space-3);">
+                    <span class="tier-badge tier-badge--silver">SILVER</span>
+                    <span id="silver-label" style="margin-inline-start:var(--space-2);">الباقة الفضية</span>
+                </h2>
+                <p id="silver-desc" style="color:var(--color-text-secondary); margin-bottom:var(--space-4);">
+                    الباقة الأساسية — خصم وشحن مجاني.
+                </p>
+                <div class="row">
+                    <div class="field"><label for="s-name-ar" id="lbl-s-name-ar">الاسم (عربي)</label><input id="s-name-ar" class="input" value="الباقة الفضية"></div>
+                    <div class="field"><label for="s-name-en" id="lbl-s-name-en">Name (EN)</label><input id="s-name-en" class="input" value="Silver"></div>
+                </div>
+                <div class="row">
+                    <div class="field"><label for="s-price" id="lbl-s-price">السعر الشهري (SAR)</label><input id="s-price" class="input" type="number" step="0.01" min="0" value="49"></div>
+                    <div class="field"><label for="s-discount" id="lbl-s-discount">نسبة الخصم (%)</label><input id="s-discount" class="input" type="number" step="1" min="0" max="100" value="10"></div>
+                </div>
+                <div class="row">
+                    <div class="field"><label for="s-shipping" id="lbl-s-shipping">شحن مجاني (مرّات/شهر)</label><input id="s-shipping" class="input" type="number" min="0" value="2"></div>
+                    <div class="field"><label for="s-duration" id="lbl-s-duration">مدة الاشتراك (أيام)</label><input id="s-duration" class="input" type="number" min="1" value="30"></div>
+                </div>
+                <!-- Silver: NO monthly gift, NO early access, NO badge -->
+                <p class="alert alert--info" id="silver-note">الباقة الفضية تتضمن الخصم والشحن المجاني فقط. المزايا الإضافية (الهدية الشهرية، الوصول المبكر، الشارة) متاحة فقط في الباقة الذهبية.</p>
+            </section>
+
+            <!-- Step 2: Gold -->
+            <section class="step" data-step="2" aria-labelledby="gold-title">
+                <h2 id="gold-title" style="font-size:var(--font-size-lg); margin-bottom:var(--space-3);">
+                    <span class="tier-badge tier-badge--gold">GOLD</span>
+                    <span id="gold-label" style="margin-inline-start:var(--space-2);">الباقة الذهبية</span>
+                </h2>
+                <p id="gold-desc" style="color:var(--color-text-secondary); margin-bottom:var(--space-4);">
+                    الباقة المميزة — كل مزايا الفضية + هدية شهرية + وصول مبكر + شارة.
+                </p>
+                <div class="row">
+                    <div class="field"><label for="g-name-ar" id="lbl-g-name-ar">الاسم (عربي)</label><input id="g-name-ar" class="input" value="الباقة الذهبية"></div>
+                    <div class="field"><label for="g-name-en" id="lbl-g-name-en">Name (EN)</label><input id="g-name-en" class="input" value="Gold"></div>
+                </div>
+                <div class="row">
+                    <div class="field"><label for="g-price" id="lbl-g-price">السعر الشهري (SAR)</label><input id="g-price" class="input" type="number" step="0.01" min="0" value="99"></div>
+                    <div class="field"><label for="g-discount" id="lbl-g-discount">نسبة الخصم (%)</label><input id="g-discount" class="input" type="number" step="1" min="0" max="100" value="25"></div>
+                </div>
+                <div class="row">
+                    <div class="field"><label for="g-shipping" id="lbl-g-shipping">شحن مجاني (مرّات/شهر)</label><input id="g-shipping" class="input" type="number" min="0" value="5"></div>
+                    <div class="field"><label for="g-duration" id="lbl-g-duration">مدة الاشتراك (أيام)</label><input id="g-duration" class="input" type="number" min="1" value="30"></div>
+                </div>
+                <label class="checkbox-row"><input type="checkbox" id="g-gift" checked><span id="lbl-g-gift">هدية شهرية</span></label>
+                <label class="checkbox-row"><input type="checkbox" id="g-early" checked><span id="lbl-g-early">وصول مبكر للعروض</span></label>
+                <label class="checkbox-row"><input type="checkbox" id="g-badge" checked><span id="lbl-g-badge">شارة عضوية</span></label>
+            </section>
+
+            <!-- Step 3: Review -->
+            <section class="step" data-step="3" aria-labelledby="review-title">
+                <h2 id="review-title" style="font-size:var(--font-size-lg); margin-bottom:var(--space-3);">المراجعة والإطلاق</h2>
+                <p id="review-desc" style="color:var(--color-text-secondary); margin-bottom:var(--space-4);">
+                    تأكد من المعلومات — عند التأكيد سيتم إنشاء الخطط.
+                </p>
+                <div class="tier-summary" id="silver-review"></div>
+                <div class="tier-summary" id="gold-review"></div>
+            </section>
+
+            <div class="wizard-actions">
+                <button class="btn btn--ghost" id="back-btn" type="button" hidden>رجوع</button>
+                <button class="btn btn--primary" id="next-btn" type="button">التالي ←</button>
+            </div>
+        </div>
+    </main>
+
+    <script src="app.js"></script>
+    <script>
+        const TOTAL = 3;
+        const T = {
+            ar: {
+                title: 'إعداد برنامج العضوية',
+                subtitle: 'أعدّ باقتي الفضية والذهبية لعملائك',
+                loading: 'جاري التحميل…',
+                silverLabel: 'الباقة الفضية', silverDesc: 'الباقة الأساسية — خصم وشحن مجاني.',
+                silverNote: 'الباقة الفضية تتضمن الخصم والشحن المجاني فقط. المزايا الإضافية متاحة في الذهبية.',
+                goldLabel: 'الباقة الذهبية', goldDesc: 'الباقة المميزة — كل مزايا الفضية + هدية شهرية + وصول مبكر + شارة.',
+                reviewTitle: 'المراجعة والإطلاق', reviewDesc: 'تأكد من المعلومات — عند التأكيد سيتم إنشاء الخطط.',
+                lbl: { nameAr: 'الاسم (عربي)', nameEn: 'Name (EN)', price: 'السعر الشهري (SAR)', discount: 'نسبة الخصم (%)',
+                       shipping: 'شحن مجاني (مرّات/شهر)', duration: 'مدة الاشتراك (أيام)',
+                       gift: 'هدية شهرية', early: 'وصول مبكر للعروض', badge: 'شارة عضوية' },
+                next: 'التالي ←', back: 'رجوع', finish: 'إطلاق البرنامج',
+                reviewPrice: (v) => `السعر: ${v} ر.س/شهر`, reviewDiscount: (v) => `خصم: ${v}%`,
+                reviewShipping: (v) => `شحن مجاني: ${v}/شهر`, reviewDuration: (v) => `المدة: ${v} يوم`,
+                reviewGift: 'هدية شهرية ✓', reviewEarly: 'وصول مبكر ✓', reviewBadge: 'شارة ✓',
+                saved: 'تم إطلاق البرنامج بنجاح',
+            },
+            en: {
+                title: 'Membership Program Setup',
+                subtitle: 'Configure your Silver and Gold tiers',
+                loading: 'Loading…',
+                silverLabel: 'Silver tier', silverDesc: 'Base tier — discount + free shipping.',
+                silverNote: 'Silver includes discount and free shipping only. Premium perks (gift, early access, badge) are Gold-exclusive.',
+                goldLabel: 'Gold tier', goldDesc: 'Premium tier — everything in Silver + monthly gift + early access + badge.',
+                reviewTitle: 'Review & Launch', reviewDesc: 'Confirm the details — plans will be created upon submission.',
+                lbl: { nameAr: 'Name (AR)', nameEn: 'Name (EN)', price: 'Monthly price (SAR)', discount: 'Discount (%)',
+                       shipping: 'Free shipping/month', duration: 'Duration (days)',
+                       gift: 'Monthly gift', early: 'Early access', badge: 'Member badge' },
+                next: 'Next →', back: 'Back', finish: 'Launch program',
+                reviewPrice: (v) => `Price: ${v} SAR/mo`, reviewDiscount: (v) => `Discount: ${v}%`,
+                reviewShipping: (v) => `Free shipping: ${v}/mo`, reviewDuration: (v) => `Duration: ${v} days`,
+                reviewGift: 'Monthly gift ✓', reviewEarly: 'Early access ✓', reviewBadge: 'Badge ✓',
+                saved: 'Program launched successfully',
+            }
+        };
+
+        let lang = MP.getLang();
+        let step = 1;
+        MP.requireAuth();
+        function tr() { return T[lang]; }
+
+        function show(which) {
+            ['state-loading', 'state-error', 'state-data'].forEach(id => { document.getElementById(id).hidden = id !== which; });
+        }
+
+        function applyLang() {
+            const t = tr();
+            document.getElementById('wizard-title').textContent = t.title;
+            document.getElementById('wizard-subtitle').textContent = t.subtitle;
+            document.getElementById('loading-text').textContent = t.loading;
+            document.getElementById('silver-label').textContent = t.silverLabel;
+            document.getElementById('silver-desc').textContent = t.silverDesc;
+            document.getElementById('silver-note').textContent = t.silverNote;
+            document.getElementById('gold-label').textContent = t.goldLabel;
+            document.getElementById('gold-desc').textContent = t.goldDesc;
+            document.getElementById('review-title').textContent = t.reviewTitle;
+            document.getElementById('review-desc').textContent = t.reviewDesc;
+            ['s','g'].forEach(p => {
+                document.getElementById(`lbl-${p}-name-ar`).textContent = t.lbl.nameAr;
+                document.getElementById(`lbl-${p}-name-en`).textContent = t.lbl.nameEn;
+                document.getElementById(`lbl-${p}-price`).textContent = t.lbl.price;
+                document.getElementById(`lbl-${p}-discount`).textContent = t.lbl.discount;
+                document.getElementById(`lbl-${p}-shipping`).textContent = t.lbl.shipping;
+                document.getElementById(`lbl-${p}-duration`).textContent = t.lbl.duration;
+            });
+            document.getElementById('lbl-g-gift').textContent = t.lbl.gift;
+            document.getElementById('lbl-g-early').textContent = t.lbl.early;
+            document.getElementById('lbl-g-badge').textContent = t.lbl.badge;
+            document.getElementById('back-btn').textContent = t.back;
+            updateNextLabel();
+            MP.setLang(lang);
+            if (step === 3) renderReview();
+        }
+
+        function showStep(n) {
+            step = n;
+            document.querySelectorAll('.step').forEach(el => el.classList.toggle('is-active', Number(el.dataset.step) === n));
+            document.querySelectorAll('.steps__bar').forEach(b => b.dataset.done = Number(b.dataset.step) <= n);
+            document.getElementById('back-btn').hidden = n === 1;
+            updateNextLabel();
+            if (n === 3) renderReview();
+        }
+
+        function updateNextLabel() {
+            document.getElementById('next-btn').textContent = step === TOTAL ? tr().finish : tr().next;
+        }
+
+        function setError(msg) {
+            const el = document.getElementById('state-error');
+            el.textContent = msg; el.hidden = false;
+            setTimeout(() => { el.hidden = true; }, 5000);
+        }
+
+        function readSilver() {
+            return {
+                name_ar: document.getElementById('s-name-ar').value.trim(),
+                name_en: document.getElementById('s-name-en').value.trim(),
+                price: document.getElementById('s-price').value,
+                discount_percent: document.getElementById('s-discount').value,
+                free_shipping_quota: Number(document.getElementById('s-shipping').value),
+                duration_days: Number(document.getElementById('s-duration').value),
+                // Silver NEVER gets these:
+                monthly_gift_enabled: false,
+                early_access_enabled: false,
+                badge_enabled: false,
+            };
+        }
+
+        function readGold() {
+            return {
+                name_ar: document.getElementById('g-name-ar').value.trim(),
+                name_en: document.getElementById('g-name-en').value.trim(),
+                price: document.getElementById('g-price').value,
+                discount_percent: document.getElementById('g-discount').value,
+                free_shipping_quota: Number(document.getElementById('g-shipping').value),
+                duration_days: Number(document.getElementById('g-duration').value),
+                monthly_gift_enabled: document.getElementById('g-gift').checked,
+                early_access_enabled: document.getElementById('g-early').checked,
+                badge_enabled: document.getElementById('g-badge').checked,
+            };
+        }
+
+        function renderReview() {
+            const t = tr();
+            [{data: readSilver(), id: 'silver-review', tier: 'silver', label: t.silverLabel},
+             {data: readGold(),   id: 'gold-review',   tier: 'gold',   label: t.goldLabel}].forEach(({data, id, tier, label}) => {
+                const items = [];
+                items.push(t.reviewPrice(data.price || '0'));
+                items.push(t.reviewDiscount(data.discount_percent || '0'));
+                if (data.free_shipping_quota > 0) items.push(t.reviewShipping(data.free_shipping_quota));
+                items.push(t.reviewDuration(data.duration_days || 30));
+                if (data.monthly_gift_enabled) items.push(t.reviewGift);
+                if (data.early_access_enabled) items.push(t.reviewEarly);
+                if (data.badge_enabled) items.push(t.reviewBadge);
+                const name = lang === 'ar' ? data.name_ar : data.name_en;
+                document.getElementById(id).innerHTML = `
+                    <h3>${name || label}
+                        <span class="tier-badge tier-badge--${tier}">${tier.toUpperCase()}</span>
+                    </h3>
+                    <ul>${items.map(i => `<li>${i}</li>`).join('')}</ul>`;
+            });
+        }
+
+        async function loadState() {
+            try {
+                const s = await MP.api('/api/merchant/setup/state');
+                if (s.is_complete) {
+                    window.location.href = `dashboard.html?token=${MP.getToken()}&lang=${lang}`;
+                    return;
+                }
+                showStep(1);
+                show('state-data');
+            } catch (err) {
+                document.getElementById('state-error').textContent = MP.errorMessage(err, lang);
+                document.getElementById('state-error').hidden = false;
+                document.getElementById('state-loading').hidden = true;
+            }
+        }
+
+        async function submitProgram() {
+            const btn = document.getElementById('next-btn');
+            MP.setLoading(btn, true);
+            try {
+                await MP.api('/api/merchant/setup/program', {
+                    method: 'POST',
+                    body: JSON.stringify({ silver: readSilver(), gold: readGold() }),
+                });
+                MP.toast(tr().saved, 'success');
+                setTimeout(() => {
+                    window.location.href = `dashboard.html?token=${MP.getToken()}&lang=${lang}`;
+                }, 800);
+            } catch (err) {
+                setError(MP.errorMessage(err, lang));
+            } finally {
+                MP.setLoading(btn, false);
+            }
+        }
+
+        document.getElementById('next-btn').addEventListener('click', () => {
+            if (step < TOTAL) showStep(step + 1);
+            else submitProgram();
+        });
+        document.getElementById('back-btn').addEventListener('click', () => { if (step > 1) showStep(step - 1); });
+        document.getElementById('lang-btn').addEventListener('click', () => { lang = lang === 'ar' ? 'en' : 'ar'; applyLang(); });
+
+        applyLang();
+        show('state-loading');
+        loadState();
+    </script>
+</body>
+</html>

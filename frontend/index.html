@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Member Plus</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body { background: var(--c-neutral-50); }
+        .landing {
+            min-height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+            padding: var(--space-6);
+        }
+        .landing-card {
+            background: var(--color-surface);
+            border-radius: var(--radius-md);
+            padding: var(--space-12) var(--space-8);
+            max-width: 440px; width: 100%;
+            text-align: center;
+            box-shadow: var(--shadow-md);
+        }
+        .landing-logo { margin-bottom: var(--space-5); }
+        .landing-logo img { height: 64px; }
+        .landing-title {
+            font-family: var(--font-display);
+            font-size: var(--font-size-3xl);
+            font-weight: 600;
+            color: var(--color-text-primary);
+            margin-bottom: var(--space-2);
+        }
+        .landing-title span { color: var(--c-purple); }
+        .landing-sub {
+            font-size: var(--font-size-md);
+            color: var(--color-text-secondary);
+            margin-bottom: var(--space-8);
+            line-height: var(--line-height-base);
+        }
+        .landing-info {
+            font-size: var(--font-size-sm);
+            color: var(--color-text-secondary);
+            margin-top: var(--space-6);
+            padding-top: var(--space-5);
+            border-top: 1px solid var(--color-border);
+            line-height: 1.7;
+        }
+        /* Dev tools — localhost only */
+        .dev-tools {
+            display: none;
+            margin-top: var(--space-5);
+            padding-top: var(--space-4);
+            border-top: 1px dashed var(--color-border);
+        }
+        .dev-label {
+            font-size: var(--font-size-xs);
+            color: var(--c-danger-500);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: var(--space-3);
+        }
+    </style>
+</head>
+<body>
+    <main class="landing">
+        <div class="landing-card">
+            <div class="landing-logo">
+                <img src="assets/logo.svg" alt="Member Plus">
+            </div>
+            <h1 class="landing-title">Member <span>Plus</span></h1>
+            <p class="landing-sub" id="subtitle">
+                منصة العضويات الذكية لمتاجر سلة
+            </p>
+
+            <div id="error" class="alert alert--danger" role="alert" hidden></div>
+
+            <a class="btn btn--primary btn--block" id="salla-btn"
+               href="http://localhost:8000/api/v1/auth/salla/redirect"
+               style="font-size: var(--font-size-lg); padding: var(--space-4);">
+                <span id="salla-label">الدخول عبر سلة</span>
+            </a>
+
+            <p class="landing-info" id="info-text">
+                قم بتثبيت التطبيق من متجر تطبيقات سلة — ستصلك رسالة بريد إلكتروني تحتوي رابط لوحة التحكم الخاصة بك.
+            </p>
+
+            <!-- Dev-only demo: visible only on localhost -->
+            <div class="dev-tools" id="dev-tools">
+                <div class="dev-label">Development Only</div>
+                <button class="btn btn--secondary btn--block" id="demo-btn" type="button">
+                    Demo Sign-in
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <script src="app.js"></script>
+    <script>
+        // Show dev tools only on localhost
+        if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+            document.getElementById('dev-tools').style.display = 'block';
+        }
+
+        // If already authenticated, redirect to dashboard
+        const existingToken = MP.getToken();
+        if (existingToken) {
+            window.location.href = `dashboard.html?token=${existingToken}`;
+        }
+
+        // Demo login (dev only)
+        const demoBtn = document.getElementById('demo-btn');
+        if (demoBtn) {
+            demoBtn.addEventListener('click', async () => {
+                MP.setLoading(demoBtn, true);
+                try {
+                    const data = await MP.api('/api/v1/auth/demo', { method: 'POST', body: '{}' });
+                    if (data && data.token) {
+                        localStorage.setItem('merchant_token', data.token);
+                        window.location.href = `dashboard.html?token=${data.token}`;
+                    }
+                } catch (err) {
+                    // Fallback: try the old OAuth callback
+                    try {
+                        const data = await MP.api('/api/oauth/callback?code=demo&state=ar&mode=json');
+                        if (data && data.token) {
+                            localStorage.setItem('merchant_token', data.token);
+                            window.location.href = `dashboard.html?token=${data.token}`;
+                        }
+                    } catch (e2) {
+                        const el = document.getElementById('error');
+                        el.textContent = MP.errorMessage(err, 'ar');
+                        el.hidden = false;
+                    }
+                } finally {
+                    MP.setLoading(demoBtn, false);
+                }
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+fastapi==0.104.1
+uvicorn==0.24.0
+python-multipart==0.0.6
+
+# Phase 1: Database
+sqlalchemy==2.0.23
+alembic==1.13.1
+
+# Phase 1: Validation & Schemas
+pydantic[email]==2.5.0
+
+# Phase 1: Authentication & Security
+python-jose[cryptography]==3.3.0
+cryptography==41.0.7
+passlib[bcrypt]==1.7.4
+
+# Phase 1: OAuth & HTTP
+requests==2.31.0
+httpx==0.25.2
+
+# Phase 1: Database Drivers
+psycopg2-binary==2.9.9  # PostgreSQL
+
+# Phase 4: Scheduler (APScheduler) — gated by SCHEDULER_ENABLED env
+apscheduler==3.10.4
+

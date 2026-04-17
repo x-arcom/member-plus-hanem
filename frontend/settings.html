@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الإعدادات — Member Plus</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .tier-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-3); }
+        .tier {
+            border: 1px solid var(--color-border); border-radius: var(--radius-md);
+            padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2);
+        }
+        .tier[data-recommended="true"] { border-color: var(--color-brand); box-shadow: var(--shadow-md); }
+        .tier__name { font-weight: var(--font-weight-bold); font-size: var(--font-size-lg); }
+        .tier__price { font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-brand); }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar__brand">
+                <img src="assets/logo.png" alt="Member Plus" style="height:28px" onerror="this.style.display='none'">
+                <span class="logo__text">Member Plus</span>
+            </div>
+            <nav class="sidebar__nav">
+                <a class="sidebar__link" href="dashboard.html"><span class="icon">📊</span> <span id="nav-dashboard">لوحة التحكم</span></a>
+                <a class="sidebar__link" href="plans.html"><span class="icon">🏷️</span> <span id="nav-plans">خطط العضوية</span></a>
+                <a class="sidebar__link" href="members.html"><span class="icon">👥</span> <span id="nav-members">الأعضاء</span></a>
+                <a class="sidebar__link" href="settings.html" aria-current="page"><span class="icon">⚙️</span> <span id="nav-settings">الإعدادات</span></a>
+            </nav>
+            <div class="sidebar__footer">
+                <button class="sidebar__link" id="logout-btn" type="button"><span class="icon">⎋</span> <span id="nav-logout">تسجيل خروج</span></button>
+            </div>
+        </aside>
+        <div class="sidebar__overlay" id="sidebar-overlay"></div>
+
+        <div class="app-main">
+            <header class="app-topbar">
+                <div style="display:flex;align-items:center;gap:var(--space-3);">
+                    <button class="sidebar__toggle" id="sidebar-toggle" type="button" aria-label="Toggle menu">☰</button>
+                    <span class="app-topbar__title" id="topbar-title">الإعدادات</span>
+                </div>
+                <div class="app-topbar__actions">
+                    <button class="btn btn--ghost" id="lang-btn" type="button">EN / ع</button>
+                </div>
+            </header>
+
+            <main class="container">
+                <!-- Profile -->
+                <section class="card" aria-labelledby="profile-title">
+                    <div class="card__header"><div class="card__title" id="profile-title">ملف المتجر</div></div>
+                    <div id="profile-loading" class="loading-block"><div class="spinner spinner--sm"></div></div>
+                    <div id="profile-data" hidden>
+                        <div class="card__grid">
+                            <div class="info-box"><span class="info-box__label" id="lbl-store">اسم المتجر</span><span class="info-box__value" id="val-store">—</span></div>
+                            <div class="info-box"><span class="info-box__label" id="lbl-email">البريد الإلكتروني</span><span class="info-box__value" id="val-email">—</span></div>
+                            <div class="info-box"><span class="info-box__label" id="lbl-storeId">معرف المتجر</span><span class="info-box__value" id="val-storeId">—</span></div>
+                            <div class="info-box"><span class="info-box__label" id="lbl-lang">اللغة</span><span class="info-box__value" id="val-lang">—</span></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Billing -->
+                <section class="card" id="billing" aria-labelledby="billing-title">
+                    <div class="card__header">
+                        <div class="card__title" id="billing-title">الاشتراك في Member Plus</div>
+                        <span id="billing-status" class="pill pill--neutral"></span>
+                    </div>
+                    <div id="billing-loading" class="loading-block"><div class="spinner spinner--sm"></div></div>
+                    <div id="billing-error" class="alert alert--danger" role="alert" hidden></div>
+                    <div id="billing-content" hidden>
+                        <div id="billing-summary" style="margin-bottom:var(--space-4);"></div>
+                        <div id="billing-tiers-wrap">
+                            <h3 id="choose-tier" style="font-size:var(--font-size-md); margin-bottom:var(--space-3);">اختر الباقة</h3>
+                            <div class="tier-grid" id="tier-grid"></div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        const T = {
+            ar: {
+                topbar: 'الإعدادات',
+                navDashboard: 'لوحة التحكم', navPlans: 'خطط العضوية',
+                navMembers: 'الأعضاء', navSettings: 'الإعدادات', navLogout: 'تسجيل خروج',
+                profileTitle: 'ملف المتجر',
+                lblStore: 'اسم المتجر', lblEmail: 'البريد الإلكتروني', lblStoreId: 'معرف المتجر', lblLang: 'اللغة',
+                billingTitle: 'الاشتراك في Member Plus',
+                chooseTier: 'اختر الباقة',
+                subActive: 'نشط', subPending: 'قيد التأكيد', subTrial: 'تجربة',
+                subCancelled: 'ملغى', subNone: 'غير مفعّل',
+                currentSub: (tier) => `باقتك الحالية: ${tier}`,
+                pendingMsg: 'الدفع قيد التأكيد.',
+                confirmBtn: 'محاكاة تأكيد الدفع', subscribe: 'اشترك',
+            },
+            en: {
+                topbar: 'Settings',
+                navDashboard: 'Dashboard', navPlans: 'Membership Plans',
+                navMembers: 'Members', navSettings: 'Settings', navLogout: 'Sign out',
+                profileTitle: 'Store profile',
+                lblStore: 'Store name', lblEmail: 'Email', lblStoreId: 'Store ID', lblLang: 'Language',
+                billingTitle: 'Member Plus subscription',
+                chooseTier: 'Choose a tier',
+                subActive: 'Active', subPending: 'Pending', subTrial: 'Trial',
+                subCancelled: 'Cancelled', subNone: 'No subscription',
+                currentSub: (tier) => `Your plan: ${tier}`,
+                pendingMsg: 'Payment pending.',
+                confirmBtn: 'Simulate payment confirm', subscribe: 'Subscribe',
+            }
+        };
+
+        let lang = MP.getLang();
+        MP.requireAuth();
+        function tr() { return T[lang]; }
+
+        function applyLang() {
+            const t = tr();
+            document.title = t.topbar + ' — Member Plus';
+            document.getElementById('topbar-title').textContent = t.topbar;
+            document.getElementById('nav-dashboard').textContent = t.navDashboard;
+            document.getElementById('nav-plans').textContent = t.navPlans;
+            document.getElementById('nav-members').textContent = t.navMembers;
+            document.getElementById('nav-settings').textContent = t.navSettings;
+            document.getElementById('nav-logout').textContent = t.navLogout;
+            document.getElementById('profile-title').textContent = t.profileTitle;
+            document.getElementById('lbl-store').textContent = t.lblStore;
+            document.getElementById('lbl-email').textContent = t.lblEmail;
+            document.getElementById('lbl-storeId').textContent = t.lblStoreId;
+            document.getElementById('lbl-lang').textContent = t.lblLang;
+            document.getElementById('billing-title').textContent = t.billingTitle;
+            document.getElementById('choose-tier').textContent = t.chooseTier;
+            MP.setLang(lang);
+        }
+
+        // Sidebar
+        document.getElementById('sidebar-toggle').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('is-open'));
+        document.getElementById('sidebar-overlay').addEventListener('click', () => document.getElementById('sidebar').classList.remove('is-open'));
+        document.querySelectorAll('.sidebar__nav a').forEach(a => {
+            a.addEventListener('click', (e) => {
+                const token = MP.getToken();
+                if (token && !a.href.includes('token=')) {
+                    e.preventDefault();
+                    window.location.href = a.href + (a.href.includes('?') ? '&' : '?') + 'token=' + token + '&lang=' + lang;
+                }
+            });
+        });
+        document.getElementById('lang-btn').addEventListener('click', () => { lang = lang === 'ar' ? 'en' : 'ar'; applyLang(); });
+        document.getElementById('logout-btn').addEventListener('click', MP.logout);
+
+        // Profile
+        async function loadProfile() {
+            try {
+                const p = await MP.api('/api/merchant/profile');
+                document.getElementById('val-store').textContent = p.store_name || '—';
+                document.getElementById('val-email').textContent = p.merchant_email || '—';
+                document.getElementById('val-storeId').textContent = p.salla_store_id || '—';
+                document.getElementById('val-lang').textContent = p.language === 'ar' ? 'العربية' : 'English';
+                document.getElementById('profile-loading').hidden = true;
+                document.getElementById('profile-data').hidden = false;
+            } catch (err) {
+                document.getElementById('profile-loading').innerHTML = `<div class="alert alert--danger">${MP.errorMessage(err, lang)}</div>`;
+            }
+        }
+
+        // Billing
+        let lastBilling = null;
+        async function loadBilling() {
+            const loadEl = document.getElementById('billing-loading');
+            const errEl = document.getElementById('billing-error');
+            const content = document.getElementById('billing-content');
+            loadEl.hidden = false; errEl.hidden = true; content.hidden = true;
+            try {
+                const [tiersRes, subRes] = await Promise.all([
+                    MP.api('/api/merchant/billing/tiers'),
+                    MP.api('/api/merchant/billing/subscription'),
+                ]);
+                lastBilling = { tiers: tiersRes.tiers, subscription: subRes.subscription };
+                renderBilling(lastBilling);
+                loadEl.hidden = true; content.hidden = false;
+            } catch (err) {
+                loadEl.hidden = true;
+                errEl.textContent = MP.errorMessage(err, lang); errEl.hidden = false;
+            }
+        }
+
+        function renderBilling({ tiers, subscription }) {
+            const t = tr();
+            const pill = document.getElementById('billing-status');
+            const summary = document.getElementById('billing-summary');
+            const tiersWrap = document.getElementById('billing-tiers-wrap');
+
+            if (subscription && subscription.status === 'active') {
+                pill.className = 'pill pill--success'; pill.textContent = t.subActive;
+                summary.innerHTML = `<p>${t.currentSub(subscription.tier)}</p>`;
+                tiersWrap.hidden = true;
+                return;
+            }
+            if (subscription && subscription.status === 'pending') {
+                pill.className = 'pill pill--info'; pill.textContent = t.subPending;
+                summary.innerHTML = `
+                    <div class="alert alert--info">${t.pendingMsg}</div>
+                    <button class="btn btn--primary" id="confirm-btn" type="button">${t.confirmBtn}</button>`;
+                document.getElementById('confirm-btn').addEventListener('click', () => confirmSub(subscription.id));
+                tiersWrap.hidden = true;
+                return;
+            }
+            pill.className = 'pill pill--neutral';
+            pill.textContent = subscription && subscription.status === 'cancelled' ? t.subCancelled : t.subNone;
+            summary.innerHTML = '';
+            tiersWrap.hidden = false;
+
+            const grid = document.getElementById('tier-grid');
+            grid.innerHTML = tiers.map(tier => {
+                const name = lang === 'ar' ? tier.name_ar : tier.name_en;
+                const rec = tier.tier === 'growth';
+                return `
+                    <article class="tier" data-recommended="${rec}">
+                        <div class="tier__name">${name}</div>
+                        <div class="tier__price">${tier.price} <span style="font-size:var(--font-size-sm); color:var(--color-text-secondary)">${tier.currency} / ${tier.period_days}d</span></div>
+                        <button class="btn ${rec ? 'btn--primary' : 'btn--secondary'}" type="button" data-tier="${tier.tier}">${t.subscribe}</button>
+                    </article>`;
+            }).join('');
+            grid.querySelectorAll('button[data-tier]').forEach(btn => {
+                btn.addEventListener('click', () => subscribeTo(btn.dataset.tier, btn));
+            });
+        }
+
+        async function subscribeTo(tier, btn) {
+            MP.setLoading(btn, true);
+            try {
+                const res = await MP.api('/api/merchant/billing/subscribe', {
+                    method: 'POST', body: JSON.stringify({ tier }),
+                });
+                MP.toast('Subscribed', 'success');
+                lastBilling = { tiers: lastBilling.tiers, subscription: res.subscription };
+                renderBilling(lastBilling);
+            } catch (err) { MP.toast(MP.errorMessage(err, lang), 'danger'); }
+            finally { MP.setLoading(btn, false); }
+        }
+
+        async function confirmSub(id) {
+            const btn = document.getElementById('confirm-btn');
+            MP.setLoading(btn, true);
+            try {
+                const res = await MP.api('/api/merchant/billing/mock-confirm', {
+                    method: 'POST', body: JSON.stringify({ subscription_id: id, success: true }),
+                });
+                MP.toast('Activated', 'success');
+                lastBilling = { tiers: lastBilling.tiers, subscription: res.subscription };
+                renderBilling(lastBilling);
+            } catch (err) { MP.toast(MP.errorMessage(err, lang), 'danger'); }
+            finally { MP.setLoading(btn, false); }
+        }
+
+        if (location.hash === '#billing') {
+            document.getElementById('billing').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        applyLang();
+        loadProfile();
+        loadBilling();
+    </script>
+</body>
+</html>
