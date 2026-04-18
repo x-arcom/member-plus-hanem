@@ -146,13 +146,13 @@ def _dispatch(session, event_db_id: str, event_type: str, payload: Dict) -> Dict
     handlers = {
         "app.store.authorize": _handle_app_authorize,
         "app.subscription.started": _handle_app_subscription_started,
+        "app.subscription.renewed": _handle_app_subscription_renewed,
         "app.subscription.canceled": _handle_app_subscription_ended,
         "app.subscription.expired": _handle_app_subscription_ended,
         "app.uninstalled": _handle_app_uninstalled,
         "subscription.created": _handle_subscription_created,
         "subscription.charge.succeeded": _handle_charge_succeeded,
         "subscription.charge.failed": _handle_charge_failed,
-        "subscription.cancelled": _handle_subscription_cancelled,
         "subscription.updated": _handle_subscription_updated,
         "order.created": _handle_order_created,
         "order.cancelled": _handle_order_cancelled,
@@ -172,43 +172,77 @@ def _dispatch(session, event_db_id: str, event_type: str, payload: Dict) -> Dict
 # ---------------------------------------------------------------------------
 
 def _handle_app_authorize(session, payload) -> Dict:
-    """PRD §16: Create merchant record. Set trial (7 days). Send welcome email."""
-    from database.models import Merchant
+    """PRD §16: Create merchant record. Set trial (7 days). Send welcome email.
+
+    Salla sends merchant/store ID as top-level `merchant` field (integer).
+    OAuth tokens are inside `data` object.
+    """
+    from database.models import Merchant, OAuthToken
     from auth.crypto import encrypt
     from datetime import timedelta
 
-    data = payload.get("data") or payload
-    salla_store_id = data.get("store_id") or data.get("merchant") or data.get("id")
+    data = payload.get("data") or {}
+
+    # Salla puts store ID at top level, NOT inside data
+    salla_store_id = payload.get("merchant") or payload.get("store_id") or data.get("store_id") or data.get("id")
     if not salla_store_id:
         return {"handled": False, "reason": "missing-store-id"}
+
+    access_tok = str(data.get("access_token") or "")
+    refresh_tok = str(data.get("refresh_token") or "")
+    token_scope = str(data.get("scope") or "")
+    expires_in = int(data.get("expires") or data.get("expires_in") or 1209600)
 
     existing = session.query(Merchant).filter(
         Merchant.salla_store_id == int(salla_store_id)
     ).first()
     if existing:
-        # Re-install: reactivate
         existing.status = "trial"
-        existing.access_token = encrypt(str(data.get("access_token", "")))
-        existing.refresh_token = encrypt(str(data.get("refresh_token", "")))
+        existing.access_token = encrypt(access_tok)
+        existing.refresh_token = encrypt(refresh_tok)
+        _upsert_oauth_token(session, existing.id, access_tok, refresh_tok, token_scope, expires_in)
         session.commit()
         return {"handled": True, "action": "merchant-reactivated", "merchant_id": existing.id}
 
     now = datetime.utcnow()
     merchant = Merchant(
         salla_store_id=int(salla_store_id),
-        access_token=encrypt(str(data.get("access_token", ""))),
-        refresh_token=encrypt(str(data.get("refresh_token", ""))),
-        store_name=str(data.get("store_name") or data.get("name") or ""),
+        access_token=encrypt(access_tok),
+        refresh_token=encrypt(refresh_tok),
+        store_name="",
         status="trial",
         trial_ends_at=now + timedelta(days=7),
     )
     session.add(merchant)
+    session.flush()
+
+    _upsert_oauth_token(session, merchant.id, access_tok, refresh_tok, token_scope, expires_in)
     session.commit()
     session.refresh(merchant)
 
-    # TODO: Send welcome email (one link, dashboard only)
     logger.info("merchant %s created via app.store.authorize", merchant.id)
     return {"handled": True, "action": "merchant-created", "merchant_id": merchant.id}
+
+
+def _upsert_oauth_token(session, merchant_id, access_tok, refresh_tok, scope, expires_in):
+    """Create or update the OAuthToken row so SallaClient can find tokens."""
+    from database.models import OAuthToken
+    from auth.crypto import encrypt
+
+    token = session.query(OAuthToken).filter(OAuthToken.merchant_id == merchant_id).first()
+    if token:
+        token.access_token = encrypt(access_tok)
+        token.refresh_token = encrypt(refresh_tok)
+        token.scope = scope
+        token.expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+    else:
+        session.add(OAuthToken(
+            merchant_id=merchant_id,
+            access_token=encrypt(access_tok),
+            refresh_token=encrypt(refresh_tok),
+            scope=scope,
+            expires_at=datetime.utcnow() + timedelta(seconds=expires_in),
+        ))
 
 
 def _handle_app_subscription_started(session, payload) -> Dict:
@@ -241,6 +275,26 @@ def _handle_app_subscription_started(session, payload) -> Dict:
     session.commit()
     logger.info("merchant %s activated (plan: %s)", merchant.id, merchant.our_plan)
     return {"handled": True, "action": "merchant-activated", "merchant_id": merchant.id}
+
+
+def _handle_app_subscription_renewed(session, payload) -> Dict:
+    """Salla fires app.subscription.renewed when merchant renews their app subscription."""
+    from database.models import Merchant
+
+    store_id = _extract_merchant_id(payload)
+    if not store_id:
+        return {"handled": False, "reason": "missing-store-id"}
+
+    merchant = session.query(Merchant).filter(
+        Merchant.salla_store_id == int(store_id)
+    ).first()
+    if not merchant:
+        return {"handled": False, "reason": "merchant-not-found"}
+
+    merchant.status = "active"
+    session.commit()
+    logger.info("merchant %s app subscription renewed", merchant.id)
+    return {"handled": True, "action": "merchant-renewed", "merchant_id": merchant.id}
 
 
 def _handle_app_subscription_ended(session, payload) -> Dict:
@@ -435,8 +489,10 @@ def _handle_charge_failed(session, payload) -> Dict:
     return {"handled": True, "action": "grace-started", "member_id": member.id}
 
 
-def _handle_subscription_cancelled(session, payload) -> Dict:
-    """PRD §16: Record cancelled_at. Schedule remove_from_group at period end."""
+def _handle_subscription_updated(session, payload) -> Dict:
+    """PRD §16: Sync subscription data. Also detect cancellation — Salla sends
+    cancellation as subscription.updated with status='cancelled', NOT as a
+    separate subscription.cancelled event."""
     from database.models import Member
     from scheduler.jobs import schedule_job
 
@@ -450,40 +506,22 @@ def _handle_subscription_cancelled(session, payload) -> Dict:
     if not member:
         return {"handled": False, "reason": "member-not-found"}
 
-    if member.status not in ("active", "grace_period"):
-        return {"handled": True, "action": "already-non-active"}
-
-    member.status = "cancelled"
-    member.cancelled_at = datetime.utcnow()
-
-    # PRD §17.4: Benefits continue to period end. Remove from group at period_end.
-    if member.current_period_end:
-        schedule_job(
-            session,
-            job_type="remove_from_group",
-            scheduled_for=member.current_period_end,
-            member_id=member.id,
-        )
-
-    session.commit()
-    logger.info("member %s cancelled — benefits active until %s",
-                member.id, member.current_period_end)
-    return {"handled": True, "action": "cancellation-recorded", "member_id": member.id}
-
-
-def _handle_subscription_updated(session, payload) -> Dict:
-    """PRD §16: Sync subscription data in DB."""
-    from database.models import Member
-
-    data = payload.get("data") or payload
-    salla_subscription_id = str(data.get("subscription_id") or data.get("id") or "")
-
-    member = session.query(Member).filter(
-        Member.salla_subscription_id == salla_subscription_id,
-    ).first() if salla_subscription_id else None
-
-    if not member:
-        return {"handled": False, "reason": "member-not-found"}
+    # Detect cancellation via status field
+    salla_status = str(data.get("status") or "").lower()
+    if salla_status in ("cancelled", "canceled") and member.status in ("active", "grace_period"):
+        member.status = "cancelled"
+        member.cancelled_at = datetime.utcnow()
+        if member.current_period_end:
+            schedule_job(
+                session,
+                job_type="remove_from_group",
+                scheduled_for=member.current_period_end,
+                member_id=member.id,
+            )
+        session.commit()
+        logger.info("member %s cancelled via subscription.updated — benefits active until %s",
+                    member.id, member.current_period_end)
+        return {"handled": True, "action": "cancellation-recorded", "member_id": member.id}
 
     # Sync fields from Salla if provided
     if data.get("price"):
@@ -531,8 +569,15 @@ def _handle_order_created(session, payload) -> Dict:
     member.last_order_at = datetime.utcnow()
     member.is_at_risk = False
 
-    # Calculate discount savings from order data if available
-    discount_amount = float(data.get("discount_amount") or data.get("member_discount") or 0)
+    # Calculate discount savings — Salla puts discounts in data.amounts.discounts[]
+    amounts = data.get("amounts") or {}
+    discounts_list = amounts.get("discounts") or []
+    discount_amount = 0.0
+    if isinstance(discounts_list, list):
+        for d in discounts_list:
+            discount_amount += float(d.get("amount") or d.get("value") or 0)
+    elif isinstance(amounts.get("total_discount"), (int, float)):
+        discount_amount = float(amounts["total_discount"])
     if discount_amount > 0:
         member.total_saved_sar = float(member.total_saved_sar or 0) + discount_amount
         session.add(BenefitEvent(

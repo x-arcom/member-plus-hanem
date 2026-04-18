@@ -14,6 +14,7 @@ Design:
   rest. Callers log + continue.
 """
 import logging
+from datetime import datetime
 from typing import Callable, Dict, List, Optional
 
 from database.models import MembershipPlan
@@ -32,13 +33,8 @@ def _default_client_factory(session, merchant_id: str) -> SallaClient:
 
 def _group_payload(plan: MembershipPlan) -> Dict:
     """Translate a plan into the Salla customer-group payload shape."""
-    name = plan.name_en or plan.name_ar or f"Member Plus — {plan.tier or 'plan'}"
-    return {
-        "name": name,
-        # Salla's admin API accepts an optional condition; we leave it empty
-        # and add members by id later (Phase 6 will wire that).
-        "conditions": [],
-    }
+    name = plan.display_name_en or plan.display_name_ar or f"Member Plus — {plan.tier or 'plan'}"
+    return {"name": name}
 
 
 def provision_plan(
@@ -49,9 +45,9 @@ def provision_plan(
     plan = session.query(MembershipPlan).filter(MembershipPlan.id == plan_id).first()
     if not plan:
         return {"plan_id": plan_id, "status": "not-found"}
-    if plan.salla_customer_group_id:
+    if plan.salla_group_id:
         return {"plan_id": plan_id, "status": "already-provisioned",
-                "salla_customer_group_id": plan.salla_customer_group_id}
+                "salla_group_id": plan.salla_group_id}
 
     factory = client_factory or _default_client_factory
     try:
@@ -81,30 +77,36 @@ def provision_plan(
         logger.warning("customer-group response missing id for plan %s: %s", plan_id, body)
         return {"plan_id": plan_id, "status": "failed", "error": "missing-group-id"}
 
-    plan.salla_customer_group_id = str(group_id)
+    plan.salla_group_id = str(group_id)
     session.commit()
     logger.info("provisioned Salla customer group %s for plan %s", group_id, plan_id)
     return {
         "plan_id": plan_id, "status": "created",
-        "salla_customer_group_id": str(group_id),
+        "salla_group_id": str(group_id),
     }
 
 
 def _special_offer_payload(plan: MembershipPlan) -> Dict:
-    """Translate a plan into a Salla special-offer payload shape.
+    """Translate a plan into a Salla special-offer payload matching their API.
 
-    The offer is a percentage discount bound to the plan's customer group,
-    so only active members of that group get the member-only price. Phase R
-    handled the group; Phase G adds the offer.
+    Salla requires: name, applied_channel, offer_type, applied_to,
+    customer_groups (array), start_date, expiry_date, and a buy/get structure.
     """
-    discount = float(plan.discount_percent or 0)
-    name = f"{plan.name_en or plan.name_ar or plan.tier or 'Member'} — member discount"
+    discount = float(plan.discount_pct or 0)
+    name = f"{plan.display_name_en or plan.display_name_ar or plan.tier or 'Member'} — member discount"
+    now = datetime.utcnow()
+    far_future = now.replace(year=now.year + 5)
+
     return {
         "name": name,
-        "offer_type": "percentage",
-        "amount": discount,
-        "customer_group_id": plan.salla_customer_group_id,
-        "active": True,
+        "applied_channel": "browser_and_application",
+        "offer_type": "buy_x_get_y",
+        "applied_to": "order",
+        "customer_groups": [int(plan.salla_group_id)] if plan.salla_group_id else [],
+        "start_date": now.strftime("%Y-%m-%d %H:%M"),
+        "expiry_date": far_future.strftime("%Y-%m-%d %H:%M"),
+        "buy": {"quantity": 1, "type": "product"},
+        "get": {"discount_type": "percentage", "discount_amount": str(discount)},
     }
 
 
@@ -119,14 +121,14 @@ def provision_special_offer(
     plan = session.query(MembershipPlan).filter(MembershipPlan.id == plan_id).first()
     if not plan:
         return {"plan_id": plan_id, "status": "not-found"}
-    if plan.salla_special_offer_id:
+    if plan.salla_offer_id:
         return {
             "plan_id": plan_id, "status": "already-provisioned",
-            "salla_special_offer_id": plan.salla_special_offer_id,
+            "salla_offer_id": plan.salla_offer_id,
         }
-    if not plan.discount_percent or float(plan.discount_percent) <= 0:
+    if not plan.discount_pct or float(plan.discount_pct) <= 0:
         return {"plan_id": plan_id, "status": "skipped", "reason": "no-discount"}
-    if not plan.salla_customer_group_id:
+    if not plan.salla_group_id:
         return {"plan_id": plan_id, "status": "skipped", "reason": "no-customer-group"}
 
     factory = client_factory or _default_client_factory
@@ -157,12 +159,12 @@ def provision_special_offer(
         logger.warning("special-offer response missing id for plan %s: %s", plan_id, body)
         return {"plan_id": plan_id, "status": "failed", "error": "missing-offer-id"}
 
-    plan.salla_special_offer_id = str(offer_id)
+    plan.salla_offer_id = str(offer_id)
     session.commit()
     logger.info("provisioned Salla special offer %s for plan %s", offer_id, plan_id)
     return {
         "plan_id": plan_id, "status": "created",
-        "salla_special_offer_id": str(offer_id),
+        "salla_offer_id": str(offer_id),
     }
 
 

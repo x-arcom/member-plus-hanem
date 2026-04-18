@@ -24,11 +24,12 @@ def _seed_merchant(client):
     r = _send(client, {
         "event": "app.store.authorize",
         "event_id": "auth-001",
+        "merchant": 55555,
         "data": {
-            "store_id": 55555,
-            "store_name": "Webhook Test Store",
             "access_token": "salla-access-tok",
             "refresh_token": "salla-refresh-tok",
+            "expires": 1209600,
+            "scope": "offline_access",
         }
     })
     assert r.status_code == 200
@@ -74,7 +75,7 @@ def test_app_authorize_creates_merchant(app_client):
         "/api/v1/merchant/overview",
         headers={"Authorization": f"Bearer {token}"},
     ).json()
-    assert overview["store_name"] == "Webhook Test Store"
+    assert overview["store_name"] is not None  # store_name fetched separately, not from authorize
     assert overview["status"] == "trial"
 
 
@@ -201,9 +202,9 @@ def test_subscription_cancelled_schedules_removal(app_client):
     })
 
     r = _send(client, {
-        "event": "subscription.cancelled",
+        "event": "subscription.updated",
         "event_id": "cancel-001",
-        "data": {"subscription_id": "sub-cancel-test"},
+        "data": {"subscription_id": "sub-cancel-test", "status": "cancelled"},
     })
     assert r.status_code == 200
     assert r.json()["action"] == "cancellation-recorded"

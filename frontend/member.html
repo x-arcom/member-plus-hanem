@@ -162,7 +162,7 @@
             const badgeClass = isGrace ? 'badge--grace' : (data.tier === 'gold' ? 'badge--gold' : 'badge--silver');
             const badgeText = isGrace ? 'فترة سماح' : `${data.display_name_ar || data.tier} / ${data.display_name_en || data.tier}`;
 
-            const fmt = (d) => d ? new Date(d).toLocaleDateString('ar-SA') : '—';
+            const fmt = (d) => d ? new Date(d).toLocaleDateString('en-US') : '—';
             const fsRemaining = data.free_shipping_remaining || 0;
             const fsPct = data.free_shipping_quota ? Math.round((fsRemaining / (data.free_shipping_quota || 1)) * 100) : 0;
 
@@ -174,7 +174,7 @@
                     <div class="member-header__badge ${badgeClass}">${badgeText}</div>
                     <div class="member-header__name">${data.display_name_ar || ''} / ${data.display_name_en || ''}</div>
                     <div class="member-header__renewal">التجديد: ${fmt(data.current_period_end)}</div>
-                    <div class="member-header__savings">وفّرت ${Number(data.total_saved_sar || 0).toLocaleString('ar-SA')} ر.س</div>
+                    <div class="member-header__savings">وفّرت ${Number(data.total_saved_sar || 0).toLocaleString('en-US')} ر.س</div>
                 </section>`;
 
             // Grace period CTA — PRD §9.4

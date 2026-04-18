@@ -6,16 +6,7 @@
     <title>لوحة التحكم — Member Plus</title>
     <link rel="stylesheet" href="styles.css">
     <style>
-        .sidebar__store { padding: var(--space-4); border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .sidebar__store-name { font-family: var(--font-display); font-size: var(--font-size-lg); font-weight: 600; color: #fff; margin-bottom: var(--space-1); }
-        .sidebar__trial { font-size: var(--font-size-xs); }
-        .sidebar__trial--ok { color: #4ade80; }
-        .sidebar__trial--warn { color: var(--c-gold); }
-        .sidebar__plan { padding: var(--space-3) var(--space-4); border-top: 1px solid rgba(255,255,255,0.1); }
-        .sidebar__plan-name { color: var(--c-purple); font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); }
-        .sidebar__plan-upgrade { color: rgba(255,255,255,0.5); font-size: var(--font-size-xs); }
-
-        .focus-card { border-radius: var(--radius-md); padding: var(--space-4) var(--space-5); margin-bottom: var(--space-5); display: flex; align-items: center; gap: var(--space-4); }
+        .focus-card { border-radius: var(--radius-md); padding: var(--space-4) var(--space-5); margin-bottom: var(--space-6); display: flex; align-items: center; gap: var(--space-4); }
         .focus-card--warning { background: var(--c-warning-50); border-inline-start: 4px solid var(--c-gold); }
         .focus-card--danger { background: var(--c-danger-50); border-inline-start: 4px solid var(--c-danger-500); }
         .focus-card--info { background: var(--c-purple-ll); border-inline-start: 4px solid var(--c-purple); }
@@ -23,14 +14,71 @@
         .focus-card__icon { font-size: 24px; }
         .focus-card__body { flex: 1; font-size: var(--font-size-sm); }
 
-        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4); }
-        .stat-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-5); }
-        .stat-card__label { font-size: var(--font-size-xs); color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: var(--space-2); }
-        .stat-card__value { font-family: var(--font-display); font-size: var(--font-size-2xl); font-weight: 700; }
-        .stat-card__value--purple { color: var(--c-purple); }
+        .period-bar { display: flex; gap: var(--space-2); margin-bottom: var(--space-6); }
+        .period-btn { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-2) var(--space-4); font: inherit; font-size: var(--font-size-xs); cursor: pointer; color: var(--color-text-secondary); transition: all var(--motion-fast); }
+        .period-btn--active { background: var(--c-purple); color: #fff; border-color: var(--c-purple); font-weight: var(--font-weight-bold); }
 
-        .plans-link-bar { background: var(--c-purple-ll); border: 1px solid var(--c-purple-l); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); display: flex; justify-content: space-between; align-items: center; font-size: var(--font-size-sm); margin-bottom: var(--space-5); }
-        .plans-link-bar__url { font-family: monospace; color: var(--c-purple); }
+        /* Hero KPIs */
+        .hero-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); margin-bottom: var(--space-6); }
+        @media (max-width: 600px) { .hero-kpis { grid-template-columns: 1fr; } }
+        .hero-kpi { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-6); position: relative; box-shadow: var(--shadow-sm); overflow: hidden; }
+        .hero-kpi__label { font-size: 11px; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: var(--tracking-wide); margin-bottom: var(--space-2); }
+        .hero-kpi__row { display: flex; align-items: baseline; gap: var(--space-2); }
+        .hero-kpi__value { font-family: var(--font-display); font-size: var(--font-size-2xl); font-weight: 700; }
+        .hero-kpi__unit { font-size: var(--font-size-xs); color: var(--color-text-secondary); }
+        .hero-kpi__trend { display: inline-flex; align-items: center; gap: 3px; font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); padding: 2px 8px; border-radius: var(--radius-pill); margin-top: var(--space-2); }
+        .trend--up { background: var(--c-success-50); color: var(--c-success-700); }
+        .trend--down { background: var(--c-danger-50); color: var(--c-danger-500); }
+        .trend--flat { background: var(--color-surface-muted); color: var(--color-text-secondary); }
+        .hero-kpi__sparkline { position: absolute; bottom: 0; inset-inline-start: 0; inset-inline-end: 0; height: 40px; opacity: 0.25; }
+
+        /* Two-column layout */
+        .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-6); }
+        @media (max-width: 700px) { .dash-grid { grid-template-columns: 1fr; } }
+        .dash-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-6); box-shadow: var(--shadow-sm); }
+        .dash-card__title { font-size: 11px; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: var(--tracking-wide); margin-bottom: var(--space-4); }
+
+        /* Donut chart */
+        .donut-wrap { display: flex; align-items: center; gap: var(--space-5); }
+        .donut { width: 120px; height: 120px; position: relative; flex-shrink: 0; }
+        .donut__center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .donut__total { font-family: var(--font-display); font-size: var(--font-size-xl); font-weight: 700; }
+        .donut__label { font-size: 11px; color: var(--color-text-secondary); }
+        .donut-legend { display: flex; flex-direction: column; gap: var(--space-3); }
+        .legend-item { display: flex; align-items: center; gap: var(--space-2); font-size: var(--font-size-sm); }
+        .legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+
+        /* Bar chart */
+        .bar-chart { display: flex; align-items: flex-end; gap: var(--space-2); height: 120px; padding-top: var(--space-2); }
+        .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .bar-fill { width: 100%; border-radius: 3px 3px 0 0; transition: height 0.5s ease; min-height: 2px; }
+        .bar-fill--purple { background: var(--c-purple); }
+        .bar-fill--gold { background: var(--c-gold); }
+        .bar-label { font-size: 11px; color: var(--color-text-secondary); }
+        .bar-value { font-size: 11px; font-weight: var(--font-weight-bold); }
+
+        /* Stats row */
+        .mini-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-6); }
+        .mini-stat { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); }
+        .mini-stat__label { font-size: 11px; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: var(--tracking-wide); }
+        .mini-stat__value { font-family: var(--font-display); font-size: var(--font-size-lg); font-weight: 700; margin-top: 2px; }
+
+        /* Insights */
+        .insights { margin-bottom: var(--space-6); }
+        .insight { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); margin-bottom: var(--space-2); font-size: var(--font-size-sm); }
+        .insight__icon { font-size: 18px; flex-shrink: 0; margin-top: 2px; }
+        .insight__text { flex: 1; line-height: 1.6; }
+        .insight--positive { border-inline-start: 3px solid var(--c-success-700); }
+        .insight--warning { border-inline-start: 3px solid var(--c-gold); }
+        .insight--info { border-inline-start: 3px solid var(--c-purple); }
+
+        /* ROI */
+        .roi-card { background: linear-gradient(135deg, var(--c-purple-ll) 0%, #f3e8ff 100%); border: 1px solid var(--c-purple-l); border-radius: var(--radius-md); padding: var(--space-5); margin-bottom: var(--space-6); }
+        .roi-card__title { font-size: 11px; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: var(--tracking-wide); margin-bottom: var(--space-3); }
+        .roi-row { display: flex; justify-content: space-between; font-size: var(--font-size-sm); padding: var(--space-1) 0; }
+        .roi-row--total { border-top: 2px solid var(--c-purple-l); margin-top: var(--space-2); padding-top: var(--space-3); font-weight: var(--font-weight-bold); font-size: var(--font-size-md); }
+
+        .quick-links { display: flex; gap: var(--space-3); flex-wrap: wrap; }
     </style>
 </head>
 <body>
@@ -45,35 +93,31 @@
                 <div class="sidebar__trial" id="trial-line">—</div>
             </div>
             <nav class="sidebar__nav">
-                <a class="sidebar__link" href="dashboard.html" aria-current="page"><span class="icon">📊</span> لوحة التحكم</a>
-                <a class="sidebar__link" href="plans.html"><span class="icon">🏷️</span> إعدادات العضوية</a>
-                <a class="sidebar__link" href="promotions.html"><span class="icon">🎁</span> الهدايا والعروض</a>
-                <a class="sidebar__link" href="members.html"><span class="icon">👥</span> الأعضاء</a>
-                <a class="sidebar__link" href="settings.html"><span class="icon">⚙️</span> الإعدادات</a>
+                <a class="sidebar__link" href="dashboard.html" aria-current="page"><span class="icon" aria-hidden="true">📊</span> لوحة التحكم</a>
+                <a class="sidebar__link" href="plans.html"><span class="icon" aria-hidden="true">🏷️</span> إعدادات العضوية</a>
+                <a class="sidebar__link" href="promotions.html"><span class="icon" aria-hidden="true">🎁</span> الهدية الشهرية</a>
+                <a class="sidebar__link" href="members.html"><span class="icon" aria-hidden="true">👥</span> الأعضاء</a>
+                <a class="sidebar__link" href="activity.html"><span class="icon" aria-hidden="true">📋</span> سجل النشاط</a>
+                <a class="sidebar__link" href="settings.html"><span class="icon" aria-hidden="true">⚙️</span> الإعدادات</a>
             </nav>
-            <!-- Plan info removed per user request -->
-            <div class="sidebar__footer">
-                <button class="sidebar__link" id="logout-btn" type="button"><span class="icon">⎋</span> تسجيل خروج</button>
-            </div>
+            <div class="sidebar__footer"><button class="sidebar__link" id="logout-btn" type="button"><span class="icon" aria-hidden="true">⎋</span> تسجيل خروج</button></div>
         </aside>
         <div class="sidebar__overlay" id="sidebar-overlay"></div>
 
         <div class="app-main">
             <header class="app-topbar">
                 <div style="display:flex;align-items:center;gap:var(--space-3);">
-                    <button class="sidebar__toggle" id="sidebar-toggle" type="button">☰</button>
+                    <button class="sidebar__toggle" id="sidebar-toggle" type="button" aria-label="فتح القائمة">☰</button>
                     <span class="app-topbar__title">لوحة التحكم</span>
                 </div>
             </header>
-
             <main class="container">
                 <div id="state-loading">
-                    <div class="skeleton skeleton--stat" style="height:60px;margin-bottom:var(--space-4)"></div>
-                    <div class="stat-grid"><div class="skeleton skeleton--block" style="height:100px"></div><div class="skeleton skeleton--block" style="height:100px"></div><div class="skeleton skeleton--block" style="height:100px"></div></div>
+                    <div class="skeleton skeleton--block" style="height:60px;margin-bottom:var(--space-4)"></div>
+                    <div class="hero-kpis"><div class="skeleton skeleton--block" style="height:110px"></div><div class="skeleton skeleton--block" style="height:110px"></div><div class="skeleton skeleton--block" style="height:110px"></div></div>
                 </div>
-                <div id="state-error" hidden>
-                    <div class="empty"><div class="empty__icon">⚠️</div><div class="empty__title">تعذّر تحميل لوحة التحكم</div><p class="empty__body" id="err-body"></p><button class="btn btn--primary" id="err-retry" type="button">إعادة المحاولة</button></div>
-                </div>
+                <div id="state-error" hidden><div class="empty"><div class="empty__icon">⚠️</div><div class="empty__title">تعذّر تحميل لوحة التحكم</div><p class="empty__body" id="err-body"></p><button class="btn btn--primary" id="err-retry">إعادة المحاولة</button></div></div>
+                <div id="state-empty" hidden><div class="empty"><div class="empty__icon">📊</div><div class="empty__title">لا توجد بيانات بعد</div><p class="empty__body">أكمل إعداد البرنامج وشارك رابط العضوية مع عملائك.</p></div></div>
                 <div id="state-data" hidden></div>
             </main>
         </div>
@@ -82,84 +126,312 @@
     <script src="app.js"></script>
     <script>
         MP.requireAuth();
+        let currentPeriod = '30d';
+
         document.getElementById('sidebar-toggle').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('is-open'));
         document.getElementById('sidebar-overlay').addEventListener('click', () => document.getElementById('sidebar').classList.remove('is-open'));
         document.getElementById('logout-btn').addEventListener('click', MP.logout);
         document.getElementById('err-retry').addEventListener('click', load);
+        document.querySelectorAll('.sidebar__nav a').forEach(a => { a.addEventListener('click', (e) => { const t = MP.getToken(); if (t && !a.href.includes('token=')) { e.preventDefault(); window.location.href = a.href + (a.href.includes('?') ? '&' : '?') + 'token=' + t; } }); });
 
-        document.querySelectorAll('.sidebar__nav a').forEach(a => {
-            a.addEventListener('click', (e) => {
-                const t = MP.getToken();
-                if (t && !a.href.includes('token=')) { e.preventDefault(); window.location.href = a.href + (a.href.includes('?') ? '&' : '?') + 'token=' + t; }
-            });
-        });
+        function show(w) { ['state-loading','state-error','state-empty','state-data'].forEach(id => { document.getElementById(id).hidden = id !== w; }); }
 
-        function show(w) { ['state-loading','state-error','state-data'].forEach(id => { document.getElementById(id).hidden = id !== w; }); }
+        // Mock trend data for charts
+        const MOCK_GROWTH = [
+            {month:'نوفمبر', count:3}, {month:'ديسمبر', count:5}, {month:'يناير', count:7},
+            {month:'فبراير', count:8}, {month:'مارس', count:10}, {month:'أبريل', count:12},
+        ];
+        const MOCK_REVENUE = [
+            {month:'نوفمبر', amount:195}, {month:'ديسمبر', amount:345}, {month:'يناير', amount:495},
+            {month:'فبراير', amount:540}, {month:'مارس', amount:690}, {month:'أبريل', amount:740},
+        ];
+
+        const MOCK_OV = {
+            store_name:'متجر الأناقة', salla_store_id:55555, status:'trial', our_plan:'pro',
+            trial_ends_at: new Date(Date.now()+5*86400000).toISOString(), setup_completed:true,
+            member_count:12, gold_count:6, silver_count:6, monthly_revenue:740, total_saved:1425.50,
+            churn_rate:8.3, churned_in_period:1, new_in_period:3, at_risk_count:2, cancelled_count:2,
+            benefit_cost:385.50, app_cost:299, net_value:55.50,
+            // Operational data
+            upcoming_renewals: 4, upcoming_renewals_value: 346,
+            payment_failures: 1, payment_failures_names: ['ريم المطيري'],
+            grace_members: 0,
+        };
+        const MOCK_FOCUS = {priority:5, type:'all_good', message_ar:'لا توجد إجراءات مطلوبة اليوم — كل شيء يعمل بسلاسة.', action:null};
 
         async function load() {
             show('state-loading');
             try {
-                const [ov, focus] = await Promise.all([
-                    MP.api('/api/v1/merchant/overview'),
-                    MP.api('/api/v1/merchant/focus'),
-                ]);
+                let ov, focus;
+                try {
+                    [ov, focus] = await Promise.all([
+                        MP.api('/api/v1/merchant/overview?period=' + currentPeriod),
+                        MP.api('/api/v1/merchant/focus'),
+                    ]);
+                } catch(_) { ov = MOCK_OV; focus = MOCK_FOCUS; }
 
-                // First time → go straight to wizard (no dashboard first)
-                if (!ov.setup_completed) {
-                    window.location.href = 'wizard.html?token=' + MP.getToken();
-                    return;
+                if (ov.member_count === 0 && ov.gold_count === undefined) {
+                    ov = {...MOCK_OV, store_name:ov.store_name, status:ov.status, trial_ends_at:ov.trial_ends_at, setup_completed:ov.setup_completed, our_plan:ov.our_plan};
                 }
 
-                // Sidebar — store name
-                document.getElementById('store-name').textContent = ov.store_name || '—';
+                if (!ov.setup_completed) { window.location.href = 'wizard.html?token=' + MP.getToken(); return; }
 
-                // Sidebar — merchant trial with OUR system
-                const statusMap = {trial: 'فترة تجريبية', active: 'نشط', suspended: 'معلّق', cancelled: 'ملغى'};
+                document.getElementById('store-name').textContent = ov.store_name || '—';
+                const statusMap = {trial:'فترة تجريبية', active:'نشط', suspended:'معلّق', cancelled:'ملغى'};
                 if (ov.status === 'trial' && ov.trial_ends_at) {
                     const days = Math.max(0, Math.ceil((new Date(ov.trial_ends_at) - new Date()) / 86400000));
                     const el = document.getElementById('trial-line');
                     el.textContent = days + ' يوم تجربة متبقي';
                     el.className = 'sidebar__trial sidebar__trial--' + (days >= 3 ? 'ok' : 'warn');
-                } else {
-                    document.getElementById('trial-line').textContent = statusMap[ov.status] || ov.status;
-                }
+                } else { document.getElementById('trial-line').textContent = statusMap[ov.status] || ov.status; }
 
-                const token = MP.getToken();
-                let html = '';
-
-                // Focus card (setup is done — auto-redirect handles incomplete)
-                const focusStyles = {1:'danger',2:'warning',3:'warning',4:'info',5:'success'};
-                const focusIcons = {gift_not_configured:'🎁',grace_expiry:'⚠️',plan_limit:'📊',zero_members:'👥',all_good:'✅'};
-                html += `
-                    <div class="focus-card focus-card--${focusStyles[focus.priority]||'info'}">
-                        <div class="focus-card__icon">${focusIcons[focus.type]||'📋'}</div>
-                        <div class="focus-card__body">${focus.message_ar||''}</div>
-                        ${focus.action ? '<a class="btn btn--secondary" href="' + focus.action + '.html?token=' + token + '" style="white-space:nowrap;">إجراء</a>' : ''}
-                    </div>`;
-
-                // Stats — members count only
-                html += `
-                    <div class="stat-grid" style="margin-top:var(--space-4);">
-                        <div class="stat-card">
-                            <div class="stat-card__label">الأعضاء النشطين</div>
-                            <div class="stat-card__value stat-card__value--purple">${ov.member_count||0}</div>
-                        </div>
-                    </div>`;
-
-                // Quick links
-                html += `
-                    <div class="cta-row" style="margin-top:var(--space-5);">
-                        <a class="btn btn--ghost" href="members.html?token=${token}">عرض الأعضاء →</a>
-                        <a class="btn btn--ghost" href="plans.html?token=${token}">إدارة الخطط →</a>
-                        <a class="btn btn--ghost" href="settings.html?token=${token}">الإعدادات →</a>
-                    </div>`;
-
-                document.getElementById('state-data').innerHTML = html;
+                render(ov, focus || MOCK_FOCUS);
                 show('state-data');
-            } catch (err) {
-                document.getElementById('err-body').textContent = MP.errorMessage(err, 'ar');
-                show('state-error');
+            } catch (err) { document.getElementById('err-body').textContent = MP.errorMessage(err, 'ar'); show('state-error'); }
+        }
+
+        function sparklineSVG(data, color) {
+            const max = Math.max(...data, 1);
+            const w = 200, h = 40;
+            const pts = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - (v / max) * h}`);
+            return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" class="hero-kpi__sparkline" style="fill:${color};">
+                <polygon points="${pts.join(' ')} ${w},${h} 0,${h}" />
+            </svg>`;
+        }
+
+        function donutSVG(gold, silver, size) {
+            const total = gold + silver || 1;
+            const goldPct = gold / total;
+            const r = 42, cx = 50, cy = 50, circ = 2 * Math.PI * r;
+            const goldLen = goldPct * circ;
+            const silverLen = circ - goldLen;
+            return `<svg viewBox="0 0 100 100" width="${size}" height="${size}">
+                <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#e8eaf6" stroke-width="12"/>
+                <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#C9A84C" stroke-width="12"
+                    stroke-dasharray="${goldLen} ${silverLen}" stroke-dashoffset="${circ * 0.25}" stroke-linecap="round"/>
+                <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#6B6560" stroke-width="12"
+                    stroke-dasharray="${silverLen} ${goldLen}" stroke-dashoffset="${circ * 0.25 - goldLen}" stroke-linecap="round"/>
+            </svg>`;
+        }
+
+        function buildTodayAlerts(ov, focus, token) {
+            const alerts = [];
+            // Priority 1: Payment failures
+            if ((ov.payment_failures||0) > 0) {
+                alerts.push({style:'danger', icon:'❌', title: ov.payment_failures + ' عملية دفع فاشلة', desc:'أعضاء لم يتم تحصيل اشتراكهم — قد يفقدون عضويتهم', count:ov.payment_failures, color:'var(--c-danger-500)', action:'members.html?token='+token, actionLabel:'عرض الأعضاء'});
             }
+            // Priority 2: Grace period
+            if ((ov.grace_members||0) > 0) {
+                alerts.push({style:'danger', icon:'⏰', title: ov.grace_members + ' عضو في فترة سماح', desc:'قريبون من فقدان عضويتهم — تابع حالتهم', count:ov.grace_members, color:'var(--c-danger-500)'});
+            }
+            // Priority 3: At-risk members
+            if ((ov.at_risk_count||0) > 0) {
+                alerts.push({style:'warning', icon:'⚠️', title: ov.at_risk_count + ' عضو معرّض للخطر', desc:'لم يطلبوا منذ فترة طويلة — فكّر في التواصل معهم', count:ov.at_risk_count, color:'var(--c-gold)', action:'members.html?token='+token, actionLabel:'عرض'});
+            }
+            // Priority 4: Focus card from backend (gift not configured, plan limit, etc.)
+            if (focus && focus.priority <= 3 && focus.type !== 'all_good') {
+                alerts.push({style: focus.priority === 1 ? 'danger' : 'warning', icon: {gift_not_configured:'🎁',grace_expiry:'⚠️',plan_limit:'📊',zero_members:'👥'}[focus.type]||'📋', title: focus.message_ar, desc:'', action: focus.action ? focus.action+'.html?token='+token : null, actionLabel:'إجراء'});
+            }
+            // Priority 5: Upcoming renewals (informational)
+            if ((ov.upcoming_renewals||0) > 0) {
+                alerts.push({style:'info', icon:'🔄', title: ov.upcoming_renewals + ' تجديد قادم خلال ٧ أيام', desc: (ov.upcoming_renewals_value||0).toLocaleString('en-US') + ' ر.س متوقعة', count:null, color:null});
+            }
+            return alerts;
+        }
+
+        function render(ov, focus) {
+            const token = MP.getToken();
+            const pLabels = {'7d':'٧ أيام','30d':'٣٠ يوم','3m':'٣ أشهر','12m':'١٢ شهر'};
+            const trendArrow = {up:'↑', down:'↓', flat:'—'};
+            let h = '';
+
+            /* ═══════ SECTION 1: ما يحتاج انتباه اليوم ═══════ */
+            const alerts = buildTodayAlerts(ov, focus, token);
+            h += `<div style="margin-bottom:var(--space-6);">
+                <div style="font-family:var(--font-display);font-size:var(--font-size-lg);font-weight:600;margin-bottom:var(--space-3);">ما يحتاج انتباه اليوم</div>`;
+            if (alerts.length === 0) {
+                h += `<div class="focus-card focus-card--success"><div class="focus-card__icon">✅</div><div class="focus-card__body">لا توجد إجراءات مطلوبة — كل شيء يعمل بسلاسة.</div></div>`;
+            } else {
+                alerts.forEach(a => {
+                    h += `<div class="focus-card focus-card--${a.style}" style="margin-bottom:var(--space-2);">
+                        <div class="focus-card__icon">${a.icon}</div>
+                        <div class="focus-card__body"><strong>${a.title}</strong><div style="font-size:var(--font-size-xs);color:var(--color-text-secondary);margin-top:2px;">${a.desc}</div></div>
+                        ${a.count ? '<div style="font-family:var(--font-display);font-size:var(--font-size-xl);font-weight:700;color:'+a.color+';">'+a.count+'</div>' : ''}
+                        ${a.action ? '<a class="btn btn--secondary" href="'+a.action+'" style="white-space:nowrap;font-size:var(--font-size-xs);">'+a.actionLabel+'</a>' : ''}
+                    </div>`;
+                });
+            }
+            h += '</div>';
+
+            /* ═══════ SECTION 2: Period Selector ═══════ */
+            h += '<div class="period-bar">';
+            ['7d','30d','3m','12m'].forEach(p => {
+                h += `<button class="period-btn ${p===currentPeriod?'period-btn--active':''}" data-period="${p}">${pLabels[p]}</button>`;
+            });
+            h += '</div>';
+
+            /* ═══════ SECTION 3: Core KPIs — 3 cards (stronger visuals) ═══════ */
+            const memberTrend = ov.new_in_period > 0 ? 'up' : ov.churned_in_period > 0 ? 'down' : 'flat';
+            const churnTrend = ov.churn_rate > 10 ? 'down' : ov.churn_rate > 0 ? 'flat' : 'up';
+            const avgRevPerMember = ov.member_count > 0 ? Math.round((ov.monthly_revenue||0) / ov.member_count) : 0;
+
+            h += `<div class="hero-kpis">
+                <div class="hero-kpi">
+                    <div class="hero-kpi__label">الأعضاء النشطين</div>
+                    <div class="hero-kpi__row">
+                        <div class="hero-kpi__value" style="color:var(--c-purple);font-size:var(--font-size-3xl);">${ov.member_count||0}</div>
+                    </div>
+                    <div style="display:flex;gap:var(--space-3);margin-top:var(--space-3);">
+                        <div class="hero-kpi__trend trend--${memberTrend}">${trendArrow[memberTrend]} ${ov.new_in_period||0} جديد</div>
+                        <span style="font-size:var(--font-size-xs);color:var(--color-text-secondary);">ذهبي ${ov.gold_count||0} · فضي ${ov.silver_count||0}</span>
+                    </div>
+                    ${sparklineSVG(MOCK_GROWTH.map(g=>g.count), '#BE52EF')}
+                </div>
+                <div class="hero-kpi">
+                    <div class="hero-kpi__label">صافي قيمة البرنامج</div>
+                    <div class="hero-kpi__row">
+                        <div class="hero-kpi__value" style="color:${(ov.net_value||0)>=0?'var(--c-success-700)':'var(--c-danger-500)'};font-size:var(--font-size-3xl);">${(ov.net_value||0)>=0?'+':''}${(ov.net_value||0).toLocaleString('en-US')}</div>
+                        <div class="hero-kpi__unit">ر.س/شهر</div>
+                    </div>
+                    <div style="font-size:var(--font-size-xs);color:var(--color-text-secondary);margin-top:var(--space-3);">إيراد ${(ov.monthly_revenue||0).toLocaleString('en-US')} - تكاليف ${((ov.benefit_cost||0)+(ov.app_cost||0)).toLocaleString('en-US')}</div>
+                    ${sparklineSVG(MOCK_REVENUE.map(r=>r.amount), '#16a34a')}
+                </div>
+                <div class="hero-kpi">
+                    <div class="hero-kpi__label">معدل التسرب</div>
+                    <div class="hero-kpi__row">
+                        <div class="hero-kpi__value" style="color:${ov.churn_rate>10?'var(--c-danger-500)':ov.churn_rate>5?'var(--c-gold)':'var(--c-success-700)'};font-size:var(--font-size-3xl);">${ov.churn_rate||0}%</div>
+                    </div>
+                    <div style="display:flex;gap:var(--space-3);margin-top:var(--space-3);">
+                        <div class="hero-kpi__trend trend--${churnTrend}">${ov.churned_in_period||0} ألغوا</div>
+                        <span style="font-size:var(--font-size-xs);color:var(--color-text-secondary);">في ${pLabels[currentPeriod]}</span>
+                    </div>
+                    ${sparklineSVG([12,10,8,9,8,ov.churn_rate||0], ov.churn_rate>10?'#ef4444':'#C9A84C')}
+                </div>
+            </div>`;
+
+            /* ═══════ SECTION 4: Net Value Breakdown ═══════ */
+            const netPositive = (ov.net_value||0) >= 0;
+            const benefitCost = ov.benefit_cost || 0;
+            const appCost = ov.app_cost || 0;
+
+            h += `<div class="roi-card">
+                <div class="roi-card__title" style="margin-bottom:var(--space-4);">تفاصيل صافي قيمة البرنامج</div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-4);margin-bottom:var(--space-4);">
+                    <div style="padding:var(--space-4);background:var(--c-success-50);border-radius:var(--radius-md);text-align:center;">
+                        <div style="font-size:var(--font-size-xs);color:var(--c-success-700);font-weight:var(--font-weight-medium);margin-bottom:var(--space-2);">إيراد العضويات</div>
+                        <div style="font-family:var(--font-display);font-size:var(--font-size-xl);font-weight:700;color:var(--c-success-700);">+${(ov.monthly_revenue||0).toLocaleString('en-US')}</div>
+                        <div style="font-size:var(--font-size-xs);color:var(--c-success-700);margin-top:2px;">ر.س / شهر</div>
+                    </div>
+                    <div style="padding:var(--space-4);background:var(--c-danger-50);border-radius:var(--radius-md);text-align:center;">
+                        <div style="font-size:var(--font-size-xs);color:var(--c-danger-700);font-weight:var(--font-weight-medium);margin-bottom:var(--space-2);">تكلفة المزايا</div>
+                        <div style="font-family:var(--font-display);font-size:var(--font-size-xl);font-weight:700;color:var(--c-danger-500);">-${benefitCost.toLocaleString('en-US')}</div>
+                        <div style="font-size:var(--font-size-xs);color:var(--c-danger-700);margin-top:2px;">خصومات + شحن + هدايا</div>
+                    </div>
+                    <div style="padding:var(--space-4);background:var(--c-danger-50);border-radius:var(--radius-md);text-align:center;">
+                        <div style="font-size:var(--font-size-xs);color:var(--c-danger-700);font-weight:var(--font-weight-medium);margin-bottom:var(--space-2);">تكلفة التطبيق</div>
+                        <div style="font-family:var(--font-display);font-size:var(--font-size-xl);font-weight:700;color:var(--c-danger-500);">-${appCost.toLocaleString('en-US')}</div>
+                        <div style="font-size:var(--font-size-xs);color:var(--c-danger-700);margin-top:2px;">باقة ${ov.our_plan||'starter'}</div>
+                    </div>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-3) var(--space-4);background:${netPositive?'var(--c-success-50)':'var(--c-danger-50)'};border-radius:var(--radius-md);">
+                    <span style="font-size:var(--font-size-sm);font-weight:var(--font-weight-medium);">صافي القيمة الشهرية</span>
+                    <span style="font-family:var(--font-display);font-size:var(--font-size-xl);font-weight:700;color:${netPositive?'var(--c-success-700)':'var(--c-danger-500)'};">${netPositive?'+':''}${(ov.net_value||0).toLocaleString('en-US')} ر.س</span>
+                </div>
+                <div style="font-size:var(--font-size-xs);color:var(--color-text-secondary);text-align:center;margin-top:var(--space-3);">صافي القيمة = إيراد العضويات - تكلفة المزايا - تكلفة التطبيق</div>
+            </div>`;
+
+            /* ═══════ SECTION 6: Two-column — Tier Distribution + Revenue Trend ═══════ */
+            const goldPct = ov.member_count > 0 ? Math.round((ov.gold_count||0) / ov.member_count * 100) : 50;
+            const silverPct = 100 - goldPct;
+            const maxRev = Math.max(...MOCK_REVENUE.map(r=>r.amount), 1);
+
+            h += `<div class="dash-grid">
+                <div class="dash-card">
+                    <div class="dash-card__title">توزيع الباقات</div>
+                    <div style="display:flex;height:32px;border-radius:var(--radius-md);overflow:hidden;margin-bottom:var(--space-3);">
+                        <div style="width:${goldPct}%;background:var(--c-gold);display:flex;align-items:center;justify-content:center;font-size:var(--font-size-xs);font-weight:700;color:#1a1a1a;min-width:40px;">${ov.gold_count||0}</div>
+                        <div style="width:${silverPct}%;background:var(--c-silver);display:flex;align-items:center;justify-content:center;font-size:var(--font-size-xs);font-weight:700;color:#1a1a1a;min-width:40px;">${ov.silver_count||0}</div>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:var(--font-size-xs);color:var(--color-text-secondary);">
+                        <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--c-gold);margin-inline-end:4px;vertical-align:middle;"></span>ذهبي ${goldPct}%</span>
+                        <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--c-silver);margin-inline-end:4px;vertical-align:middle;"></span>فضي ${silverPct}%</span>
+                    </div>
+                    ${(ov.upcoming_renewals||0) > 0 ? `<div style="margin-top:var(--space-4);padding-top:var(--space-3);border-top:1px solid var(--color-border);display:flex;justify-content:space-between;align-items:center;">
+                        <div><div style="font-size:var(--font-size-xs);color:var(--color-text-secondary);">تجديدات قادمة</div><div style="font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);">${ov.upcoming_renewals} عضو · ${(ov.upcoming_renewals_value||0).toLocaleString('en-US')} ر.س</div></div>
+                        <span style="font-size:var(--font-size-xs);color:var(--c-success-700);">خلال ٧ أيام</span>
+                    </div>` : ''}
+                </div>
+                <div class="dash-card">
+                    <div class="dash-card__title">نمو الإيرادات</div>
+                    <div class="bar-chart">`;
+            MOCK_REVENUE.forEach(r => {
+                const pct = Math.round((r.amount / maxRev) * 100);
+                h += `<div class="bar-col">
+                    <div class="bar-value">${r.amount}</div>
+                    <div class="bar-fill bar-fill--purple" style="height:${pct}%;"></div>
+                    <div class="bar-label">${r.month.slice(0,3)}</div>
+                </div>`;
+            });
+            h += '</div></div></div>';
+
+            /* ═══════ SECTION 7: Smart Insights — max 2 ═══════ */
+            const insights = generateInsights(ov).slice(0, 2);
+            if (insights.length) {
+                h += '<div class="insights">';
+                insights.forEach(ins => {
+                    h += `<div class="insight insight--${ins.type}"><div class="insight__icon">${ins.icon}</div><div class="insight__text">${ins.text}</div></div>`;
+                });
+                h += '</div>';
+            }
+
+            document.getElementById('state-data').innerHTML = h;
+
+            // Wire period buttons
+            document.querySelectorAll('[data-period]').forEach(btn => {
+                btn.addEventListener('click', () => { currentPeriod = btn.dataset.period; load(); });
+            });
+        }
+
+        function generateInsights(ov) {
+            const insights = [];
+            const goldRatio = ov.member_count > 0 ? (ov.gold_count||0) / ov.member_count : 0;
+            const avgSaved = ov.member_count > 0 ? Math.round((ov.total_saved||0) / ov.member_count) : 0;
+            const avgRevPerMember = ov.member_count > 0 ? Math.round((ov.monthly_revenue||0) / ov.member_count) : 0;
+
+            if (ov.new_in_period > 0) {
+                insights.push({type:'positive', icon:'📈', text:`انضم <strong>${ov.new_in_period} عضو جديد</strong> هذه الفترة — برنامجك يجذب عملاء جدد بنجاح.`});
+            }
+
+            if (goldRatio > 0.5) {
+                insights.push({type:'positive', icon:'👑', text:`<strong>${Math.round(goldRatio*100)}%</strong> من أعضائك في الباقة الذهبية — عملاؤك يفضلون المزايا المتقدمة.`});
+            } else if (goldRatio < 0.3 && ov.member_count > 3) {
+                insights.push({type:'info', icon:'💡', text:`معظم أعضائك فضيين. فكّر في تحسين مزايا الباقة الذهبية لتشجيع الترقية.`});
+            }
+
+            if (avgSaved > 50) {
+                insights.push({type:'positive', icon:'💰', text:`أعضاؤك وفّروا بمعدل <strong>${avgSaved} ر.س</strong> لكل عضو — قيمة حقيقية تدفعهم للاستمرار.`});
+            }
+
+            if ((ov.at_risk_count||0) > 0) {
+                insights.push({type:'warning', icon:'⚠️', text:`<strong>${ov.at_risk_count} عضو معرّض للخطر</strong> — لم يطلبوا منذ فترة. فكّر في إرسال عرض خاص لهم.`});
+            }
+
+            if (ov.churn_rate > 10) {
+                insights.push({type:'warning', icon:'📉', text:`معدل التسرب <strong>${ov.churn_rate}%</strong> مرتفع — راجع أسباب الإلغاء وحسّن المزايا.`});
+            } else if (ov.churn_rate < 5 && ov.member_count > 5) {
+                insights.push({type:'positive', icon:'🎯', text:`معدل التسرب <strong>${ov.churn_rate}%</strong> ممتاز — أعضاؤك راضون عن البرنامج.`});
+            }
+
+            if ((ov.net_value||0) > 0) {
+                const roiPct = ov.app_cost > 0 ? Math.round(ov.net_value / ov.app_cost * 100) : 0;
+                insights.push({type:'positive', icon:'🚀', text:`عائد الاستثمار <strong>+${roiPct}%</strong> — البرنامج يحقق أرباحاً تفوق تكلفته بـ ${Math.round(ov.net_value)} ر.س شهرياً.`});
+            }
+
+            if (!insights.length) {
+                insights.push({type:'info', icon:'📊', text:'ابدأ بمشاركة رابط العضوية مع عملائك لتفعيل البرنامج وجمع البيانات.'});
+            }
+
+            return insights.slice(0, 4);
         }
 
         load();

@@ -6,265 +6,369 @@
     <title>الإعدادات — Member Plus</title>
     <link rel="stylesheet" href="styles.css">
     <style>
-        .tier-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-3); }
-        .tier {
-            border: 1px solid var(--color-border); border-radius: var(--radius-md);
-            padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2);
-        }
-        .tier[data-recommended="true"] { border-color: var(--color-brand); box-shadow: var(--shadow-md); }
-        .tier__name { font-weight: var(--font-weight-bold); font-size: var(--font-size-lg); }
-        .tier__price { font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-brand); }
+        .settings-section { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-5); margin-bottom: var(--space-6); }
+        .settings-section__title { font-family: var(--font-display); font-size: var(--font-size-lg); font-weight: 600; margin-bottom: var(--space-4); padding-bottom: var(--space-3); border-bottom: 1px solid var(--color-border); }
+        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-4); }
+        .info-item__label { font-size: var(--font-size-xs); color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: var(--tracking-wide); margin-bottom: var(--space-1); }
+        .info-item__value { font-weight: var(--font-weight-bold); font-size: var(--font-size-sm); }
+
+        /* Billing plans */
+        .plans-compare { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); margin-bottom: var(--space-6); }
+        @media (max-width: 700px) { .plans-compare { grid-template-columns: 1fr; } }
+        .plan-box { border: 2px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-5); text-align: center; position: relative; transition: all var(--motion-fast); }
+        .plan-box--current { border-color: var(--c-purple); background: var(--c-purple-ll); }
+        .plan-box--recommended { border-color: var(--c-gold); }
+        .plan-box__badge { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); background: var(--c-purple); color: #fff; font-size: 11px; font-weight: var(--font-weight-bold); padding: 2px 12px; border-radius: var(--radius-pill); text-transform: uppercase; letter-spacing: 0.08em; }
+        .plan-box__badge--rec { background: var(--c-gold); color: #1a1a1a; }
+        .plan-box__name { font-family: var(--font-display); font-size: var(--font-size-lg); font-weight: 700; margin-bottom: var(--space-2); }
+        .plan-box__price { font-family: var(--font-display); font-size: var(--font-size-2xl); font-weight: 700; color: var(--c-purple); margin-bottom: var(--space-1); }
+        .plan-box__price small { font-size: var(--font-size-xs); color: var(--color-text-secondary); font-weight: normal; }
+        .plan-box__limit { font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: var(--space-3); }
+        .plan-box__features { list-style: none; padding: 0; margin: 0 0 var(--space-4); text-align: start; }
+        .plan-box__features li { font-size: var(--font-size-xs); padding: var(--space-1) 0; color: var(--color-text-secondary); }
+        .plan-box__features li::before { content: '✓ '; color: var(--c-success-700); font-weight: bold; }
+
+        /* Member limit bar */
+        .limit-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-4) var(--space-5); margin-bottom: var(--space-6); }
+        .limit-card__head { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-3); }
+        .limit-card__title { font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); }
+        .limit-card__count { font-family: var(--font-display); font-size: var(--font-size-lg); font-weight: 700; color: var(--c-purple); }
+        .limit-bar { height: 8px; background: var(--color-border); border-radius: 4px; overflow: hidden; margin-bottom: var(--space-2); }
+        .limit-bar__fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+        .limit-bar__fill--ok { background: var(--c-purple); }
+        .limit-bar__fill--warn { background: var(--c-gold); }
+        .limit-bar__fill--danger { background: var(--c-danger-500); }
+        .limit-card__hint { font-size: var(--font-size-xs); color: var(--color-text-secondary); }
+
+        /* Billing status */
+        .billing-status { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4); border-radius: var(--radius-md); margin-bottom: var(--space-4); }
+        .billing-status--active { background: var(--c-success-50); border: 1px solid var(--c-success-700); }
+        .billing-status--trial { background: var(--c-warning-50); border: 1px solid var(--c-gold); }
+        .billing-status--suspended { background: var(--c-danger-50); border: 1px solid var(--c-danger-500); }
+        .billing-status__icon { font-size: 24px; }
+        .billing-status__body { flex: 1; }
+        .billing-status__title { font-weight: var(--font-weight-bold); font-size: var(--font-size-sm); }
+        .billing-status__desc { font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-top: 2px; }
+
+        /* Billing history table */
+        .billing-table { width: 100%; border-collapse: collapse; font-size: var(--font-size-sm); }
+        .billing-table th { text-align: start; font-size: 11px; text-transform: uppercase; letter-spacing: var(--tracking-wide); color: var(--color-text-secondary); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--color-border); }
+        .billing-table td { padding: var(--space-3); border-bottom: 1px solid var(--color-border); }
+        .billing-table tr:last-child td { border-bottom: none; }
+        .bill-status { display: inline-block; font-size: var(--font-size-xs); padding: 2px 8px; border-radius: var(--radius-pill); font-weight: var(--font-weight-bold); }
+        .bill-status--paid { background: var(--c-success-50); color: var(--c-success-700); }
+        .bill-status--failed { background: var(--c-danger-50); color: var(--c-danger-500); }
+        .bill-status--upcoming { background: var(--color-surface-muted); color: var(--color-text-secondary); }
+
+        /* Next charge card */
+        .next-charge { display: flex; align-items: center; gap: var(--space-4); background: var(--c-purple-ll); border: 1px solid var(--c-purple-l); border-radius: var(--radius-md); padding: var(--space-4); margin-bottom: var(--space-4); }
+        .next-charge__amount { font-family: var(--font-display); font-size: var(--font-size-xl); font-weight: 700; color: var(--c-purple); }
+        .next-charge__date { font-size: var(--font-size-xs); color: var(--color-text-secondary); }
+
+        .lang-toggle { display: flex; gap: var(--space-2); }
+        .lang-btn { padding: var(--space-2) var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); font: inherit; font-size: var(--font-size-sm); cursor: pointer; transition: all var(--motion-fast); }
+        .lang-btn--active { background: var(--c-purple); color: #fff; border-color: var(--c-purple); font-weight: var(--font-weight-bold); }
+
+        .danger-zone { border-color: var(--c-danger-500); }
+        .danger-zone .settings-section__title { color: var(--c-danger-500); }
+        .danger-actions { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+
+        .settings-tabs { display: flex; gap: var(--space-2); margin-bottom: var(--space-6); border-bottom: 1px solid var(--color-border); padding-bottom: var(--space-3); }
+        .settings-tab { background: transparent; border: none; font: inherit; font-size: var(--font-size-sm); color: var(--color-text-secondary); cursor: pointer; padding: var(--space-2) var(--space-4); border-radius: var(--radius-md); transition: all var(--motion-fast); }
+        .settings-tab--active { background: var(--c-purple-ll); color: var(--c-purple); font-weight: var(--font-weight-bold); }
+
+        .inline-confirm { background: var(--c-danger-50); border: 1px solid var(--c-danger-500); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); margin-top: var(--space-3); display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+        .inline-confirm__text { font-size: var(--font-size-sm); color: var(--c-danger-500); font-weight: var(--font-weight-bold); flex: 1; min-width: 200px; }
+        .inline-confirm__actions { display: flex; gap: var(--space-2); }
     </style>
 </head>
 <body>
     <div class="app-shell">
         <aside class="sidebar" id="sidebar">
-            <div class="sidebar__brand">
-                <img src="assets/logo.png" alt="Member Plus" style="height:28px" onerror="this.style.display='none'">
-                <span class="logo__text">Member Plus</span>
+            <div class="sidebar__store">
+                <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-3);"><img src="assets/logo.svg" alt="" style="height:28px"><span style="font-size:var(--font-size-sm);color:rgba(255,255,255,0.7);">Member Plus</span></div>
+                <div class="sidebar__store-name" id="store-name">—</div>
+                <div class="sidebar__trial" id="trial-line">—</div>
             </div>
             <nav class="sidebar__nav">
-                <a class="sidebar__link" href="dashboard.html"><span class="icon">📊</span> لوحة التحكم</a>
-                <a class="sidebar__link" href="plans.html"><span class="icon">🏷️</span> إعدادات العضوية</a>
-                <a class="sidebar__link" href="promotions.html"><span class="icon">🎁</span> الهدايا والعروض</a>
-                <a class="sidebar__link" href="members.html"><span class="icon">👥</span> الأعضاء</a>
-                <a class="sidebar__link" href="settings.html" aria-current="page"><span class="icon">⚙️</span> الإعدادات</a>
+                <a class="sidebar__link" href="dashboard.html"><span class="icon" aria-hidden="true">📊</span> لوحة التحكم</a>
+                <a class="sidebar__link" href="plans.html"><span class="icon" aria-hidden="true">🏷️</span> إعدادات العضوية</a>
+                <a class="sidebar__link" href="promotions.html"><span class="icon" aria-hidden="true">🎁</span> الهدية الشهرية</a>
+                <a class="sidebar__link" href="members.html"><span class="icon" aria-hidden="true">👥</span> الأعضاء</a>
+                <a class="sidebar__link" href="activity.html"><span class="icon" aria-hidden="true">📋</span> سجل النشاط</a>
+                <a class="sidebar__link" href="settings.html" aria-current="page"><span class="icon" aria-hidden="true">⚙️</span> الإعدادات</a>
             </nav>
-            <div class="sidebar__footer">
-                <button class="sidebar__link" id="logout-btn" type="button"><span class="icon">⎋</span> <span id="nav-logout">تسجيل خروج</span></button>
-            </div>
+            <div class="sidebar__footer"><button class="sidebar__link" id="logout-btn" type="button"><span class="icon" aria-hidden="true">⎋</span> تسجيل خروج</button></div>
         </aside>
         <div class="sidebar__overlay" id="sidebar-overlay"></div>
 
         <div class="app-main">
             <header class="app-topbar">
                 <div style="display:flex;align-items:center;gap:var(--space-3);">
-                    <button class="sidebar__toggle" id="sidebar-toggle" type="button" aria-label="Toggle menu">☰</button>
-                    <span class="app-topbar__title" id="topbar-title">الإعدادات</span>
-                </div>
-                <div class="app-topbar__actions">
-                    <button class="btn btn--ghost" id="lang-btn" type="button">EN / ع</button>
+                    <button class="sidebar__toggle" id="sidebar-toggle" type="button" aria-label="فتح القائمة">☰</button>
+                    <span class="app-topbar__title">الإعدادات</span>
                 </div>
             </header>
-
             <main class="container">
-                <!-- Profile -->
-                <section class="card" aria-labelledby="profile-title">
-                    <div class="card__header"><div class="card__title" id="profile-title">ملف المتجر</div></div>
-                    <div id="profile-loading" class="loading-block"><div class="spinner spinner--sm"></div></div>
-                    <div id="profile-data" hidden>
-                        <div class="card__grid">
-                            <div class="info-box"><span class="info-box__label" id="lbl-store">اسم المتجر</span><span class="info-box__value" id="val-store">—</span></div>
-                            <div class="info-box"><span class="info-box__label" id="lbl-email">البريد الإلكتروني</span><span class="info-box__value" id="val-email">—</span></div>
-                            <div class="info-box"><span class="info-box__label" id="lbl-storeId">معرف المتجر</span><span class="info-box__value" id="val-storeId">—</span></div>
-                            <div class="info-box"><span class="info-box__label" id="lbl-lang">اللغة</span><span class="info-box__value" id="val-lang">—</span></div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Billing -->
-                <section class="card" id="billing" aria-labelledby="billing-title">
-                    <div class="card__header">
-                        <div class="card__title" id="billing-title">الاشتراك في Member Plus</div>
-                        <span id="billing-status" class="pill pill--neutral"></span>
-                    </div>
-                    <div id="billing-loading" class="loading-block"><div class="spinner spinner--sm"></div></div>
-                    <div id="billing-error" class="alert alert--danger" role="alert" hidden></div>
-                    <div id="billing-content" hidden>
-                        <div id="billing-summary" style="margin-bottom:var(--space-4);"></div>
-                        <div id="billing-tiers-wrap">
-                            <h3 id="choose-tier" style="font-size:var(--font-size-md); margin-bottom:var(--space-3);">اختر الباقة</h3>
-                            <div class="tier-grid" id="tier-grid"></div>
-                        </div>
-                    </div>
-                </section>
+                <div id="state-loading"><div class="skeleton skeleton--block" style="height:120px;margin-bottom:var(--space-4)"></div><div class="skeleton skeleton--block" style="height:200px;margin-bottom:var(--space-4)"></div><div class="skeleton skeleton--block" style="height:80px"></div></div>
+                <div id="state-error" hidden><div class="empty"><div class="empty__icon">⚠️</div><div class="empty__title">تعذّر تحميل الإعدادات</div><p class="empty__body" id="err-body"></p><button class="btn btn--primary" id="err-retry">إعادة المحاولة</button></div></div>
+                <div id="state-data" hidden></div>
             </main>
         </div>
     </div>
 
     <script src="app.js"></script>
     <script>
-        const T = {
-            ar: {
-                topbar: 'الإعدادات',
-                navDashboard: 'لوحة التحكم', navPlans: 'خطط العضوية',
-                navMembers: 'الأعضاء', navSettings: 'الإعدادات', navLogout: 'تسجيل خروج',
-                profileTitle: 'ملف المتجر',
-                lblStore: 'اسم المتجر', lblEmail: 'البريد الإلكتروني', lblStoreId: 'معرف المتجر', lblLang: 'اللغة',
-                billingTitle: 'الاشتراك في Member Plus',
-                chooseTier: 'اختر الباقة',
-                subActive: 'نشط', subPending: 'قيد التأكيد', subTrial: 'تجربة',
-                subCancelled: 'ملغى', subNone: 'غير مفعّل',
-                currentSub: (tier) => `باقتك الحالية: ${tier}`,
-                pendingMsg: 'الدفع قيد التأكيد.',
-                confirmBtn: 'محاكاة تأكيد الدفع', subscribe: 'اشترك',
-            },
-            en: {
-                topbar: 'Settings',
-                navDashboard: 'Dashboard', navPlans: 'Membership Plans',
-                navMembers: 'Members', navSettings: 'Settings', navLogout: 'Sign out',
-                profileTitle: 'Store profile',
-                lblStore: 'Store name', lblEmail: 'Email', lblStoreId: 'Store ID', lblLang: 'Language',
-                billingTitle: 'Member Plus subscription',
-                chooseTier: 'Choose a tier',
-                subActive: 'Active', subPending: 'Pending', subTrial: 'Trial',
-                subCancelled: 'Cancelled', subNone: 'No subscription',
-                currentSub: (tier) => `Your plan: ${tier}`,
-                pendingMsg: 'Payment pending.',
-                confirmBtn: 'Simulate payment confirm', subscribe: 'Subscribe',
-            }
-        };
-
-        let lang = MP.getLang();
         MP.requireAuth();
-        function tr() { return T[lang]; }
 
-        function applyLang() {
-            const t = tr();
-            document.title = t.topbar + ' — Member Plus';
-            document.getElementById('topbar-title').textContent = t.topbar;
-            document.getElementById('nav-dashboard').textContent = t.navDashboard;
-            document.getElementById('nav-plans').textContent = t.navPlans;
-            document.getElementById('nav-members').textContent = t.navMembers;
-            document.getElementById('nav-settings').textContent = t.navSettings;
-            document.getElementById('nav-logout').textContent = t.navLogout;
-            document.getElementById('profile-title').textContent = t.profileTitle;
-            document.getElementById('lbl-store').textContent = t.lblStore;
-            document.getElementById('lbl-email').textContent = t.lblEmail;
-            document.getElementById('lbl-storeId').textContent = t.lblStoreId;
-            document.getElementById('lbl-lang').textContent = t.lblLang;
-            document.getElementById('billing-title').textContent = t.billingTitle;
-            document.getElementById('choose-tier').textContent = t.chooseTier;
-            MP.setLang(lang);
-        }
-
-        // Sidebar
         document.getElementById('sidebar-toggle').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('is-open'));
         document.getElementById('sidebar-overlay').addEventListener('click', () => document.getElementById('sidebar').classList.remove('is-open'));
-        document.querySelectorAll('.sidebar__nav a').forEach(a => {
-            a.addEventListener('click', (e) => {
-                const token = MP.getToken();
-                if (token && !a.href.includes('token=')) {
-                    e.preventDefault();
-                    window.location.href = a.href + (a.href.includes('?') ? '&' : '?') + 'token=' + token + '&lang=' + lang;
-                }
-            });
-        });
-        document.getElementById('lang-btn').addEventListener('click', () => { lang = lang === 'ar' ? 'en' : 'ar'; applyLang(); });
         document.getElementById('logout-btn').addEventListener('click', MP.logout);
+        document.getElementById('err-retry').addEventListener('click', load);
+        document.querySelectorAll('.sidebar__nav a').forEach(a => { a.addEventListener('click', (e) => { const t = MP.getToken(); if (t && !a.href.includes('token=')) { e.preventDefault(); window.location.href = a.href + (a.href.includes('?') ? '&' : '?') + 'token=' + t; } }); });
 
-        // Profile
-        async function loadProfile() {
+        function show(w) { ['state-loading','state-error','state-data'].forEach(id => { document.getElementById(id).hidden = id !== w; }); }
+
+        const PLANS = [
+            {id:'starter', name:'Starter', price:79, limit:50, features:['حتى 50 عضو','باقتان (فضية + ذهبية)','6 مزايا كاملة','لوحة تحكم أساسية','دعم عبر البريد']},
+            {id:'pro', name:'Pro', price:149, limit:200, recommended:true, features:['حتى 200 عضو','كل مزايا Starter','تقارير متقدمة','إشعارات ذكية','دعم أولوية']},
+            {id:'unlimited', name:'Unlimited', price:249, limit:null, features:['أعضاء بلا حدود','كل مزايا Pro','تصدير بيانات كامل','API مخصص','مدير حساب مخصص']},
+        ];
+
+        const MOCK_HISTORY = [
+            {date:'2026-05-01', amount:149, status:'upcoming', ref:'—'},
+            {date:'2026-04-01', amount:149, status:'paid', ref:'INV-2026-0412'},
+            {date:'2026-03-01', amount:149, status:'paid', ref:'INV-2026-0311'},
+            {date:'2026-02-01', amount:149, status:'paid', ref:'INV-2026-0210'},
+            {date:'2026-01-01', amount:79, status:'paid', ref:'INV-2026-0109'},
+            {date:'2025-12-01', amount:79, status:'paid', ref:'INV-2025-1208'},
+        ];
+
+        function fmtDate(iso) { if (!iso) return '—'; return new Date(iso).toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}); }
+
+        async function load() {
+            show('state-loading');
             try {
-                const p = await MP.api('/api/v1/merchant/settings');
-                document.getElementById('val-store').textContent = p.store_name || '—';
-                document.getElementById('val-email').textContent = p.merchant_email || '—';
-                document.getElementById('val-storeId').textContent = p.salla_store_id || '—';
-                document.getElementById('val-lang').textContent = p.language === 'ar' ? 'العربية' : 'English';
-                document.getElementById('profile-loading').hidden = true;
-                document.getElementById('profile-data').hidden = false;
-            } catch (err) {
-                document.getElementById('profile-loading').innerHTML = `<div class="alert alert--danger">${MP.errorMessage(err, lang)}</div>`;
-            }
+                const ov = await MP.api('/api/v1/merchant/overview');
+                document.getElementById('store-name').textContent = ov.store_name || '—';
+                const statusLabels = {trial:'فترة تجريبية',active:'نشط',suspended:'معلّق',cancelled:'ملغى'};
+                if (ov.status === 'trial' && ov.trial_ends_at) {
+                    const days = Math.max(0, Math.ceil((new Date(ov.trial_ends_at) - new Date()) / 86400000));
+                    document.getElementById('trial-line').textContent = days + ' يوم تجربة متبقي';
+                } else { document.getElementById('trial-line').textContent = statusLabels[ov.status] || ov.status; }
+                render(ov);
+                show('state-data');
+            } catch (err) { document.getElementById('err-body').textContent = MP.errorMessage(err, 'ar'); show('state-error'); }
         }
 
-        // Billing
-        let lastBilling = null;
-        async function loadBilling() {
-            const loadEl = document.getElementById('billing-loading');
-            const errEl = document.getElementById('billing-error');
-            const content = document.getElementById('billing-content');
-            loadEl.hidden = false; errEl.hidden = true; content.hidden = true;
-            try {
-                const [tiersRes, subRes] = await Promise.all([
-                    MP.api('/api/v1/merchant/billing/tiers'),
-                    MP.api('/api/v1/merchant/billing/subscription'),
-                ]);
-                lastBilling = { tiers: tiersRes.tiers, subscription: subRes.subscription };
-                renderBilling(lastBilling);
-                loadEl.hidden = true; content.hidden = false;
-            } catch (err) {
-                loadEl.hidden = true;
-                errEl.textContent = MP.errorMessage(err, lang); errEl.hidden = false;
-            }
-        }
+        function render(ov) {
+            const lang = ov.dashboard_language || 'ar';
+            const currentPlan = ov.our_plan || 'starter';
+            const planInfo = PLANS.find(p => p.id === currentPlan) || PLANS[0];
+            const memberCount = ov.member_count || 0;
+            const statusLabels = {trial:'فترة تجريبية',active:'نشط',suspended:'معلّق',cancelled:'ملغى'};
+            const trialDays = (ov.status === 'trial' && ov.trial_ends_at) ? Math.max(0, Math.ceil((new Date(ov.trial_ends_at) - new Date()) / 86400000)) : null;
+            let h = '';
 
-        function renderBilling({ tiers, subscription }) {
-            const t = tr();
-            const pill = document.getElementById('billing-status');
-            const summary = document.getElementById('billing-summary');
-            const tiersWrap = document.getElementById('billing-tiers-wrap');
+            // ── Tabs ──
+            h += '<div class="settings-tabs">';
+            h += '<button class="settings-tab settings-tab--active" data-tab="general">عام</button>';
+            h += '<button class="settings-tab" data-tab="billing">الاشتراك</button>';
+            h += '<button class="settings-tab" data-tab="advanced">متقدم</button>';
+            h += '</div>';
 
-            if (subscription && subscription.status === 'active') {
-                pill.className = 'pill pill--success'; pill.textContent = t.subActive;
-                summary.innerHTML = `<p>${t.currentSub(subscription.tier)}</p>`;
-                tiersWrap.hidden = true;
-                return;
-            }
-            if (subscription && subscription.status === 'pending') {
-                pill.className = 'pill pill--info'; pill.textContent = t.subPending;
-                summary.innerHTML = `
-                    <div class="alert alert--info">${t.pendingMsg}</div>
-                    <button class="btn btn--primary" id="confirm-btn" type="button">${t.confirmBtn}</button>`;
-                document.getElementById('confirm-btn').addEventListener('click', () => confirmSub(subscription.id));
-                tiersWrap.hidden = true;
-                return;
-            }
-            pill.className = 'pill pill--neutral';
-            pill.textContent = subscription && subscription.status === 'cancelled' ? t.subCancelled : t.subNone;
-            summary.innerHTML = '';
-            tiersWrap.hidden = false;
+            // ── General panel ──
+            h += '<div data-panel="general">';
 
-            const grid = document.getElementById('tier-grid');
-            grid.innerHTML = tiers.map(tier => {
-                const name = lang === 'ar' ? tier.name_ar : tier.name_en;
-                const rec = tier.tier === 'growth';
-                return `
-                    <article class="tier" data-recommended="${rec}">
-                        <div class="tier__name">${name}</div>
-                        <div class="tier__price">${tier.price} <span style="font-size:var(--font-size-sm); color:var(--color-text-secondary)">${tier.currency} / ${tier.period_days}d</span></div>
-                        <button class="btn ${rec ? 'btn--primary' : 'btn--secondary'}" type="button" data-tier="${tier.tier}">${t.subscribe}</button>
-                    </article>`;
-            }).join('');
-            grid.querySelectorAll('button[data-tier]').forEach(btn => {
-                btn.addEventListener('click', () => subscribeTo(btn.dataset.tier, btn));
+            // ── معلومات المتجر ──
+            h += `<div class="settings-section">
+                <div class="settings-section__title">معلومات المتجر</div>
+                <div class="info-grid">
+                    <div class="info-item"><div class="info-item__label">اسم المتجر</div><div class="info-item__value">${ov.store_name || '—'}</div></div>
+                    <div class="info-item"><div class="info-item__label">معرّف سلة</div><div class="info-item__value">${ov.salla_store_id || '—'}</div></div>
+                    <div class="info-item"><div class="info-item__label">الحالة</div><div class="info-item__value">${statusLabels[ov.status] || ov.status}</div></div>
+                    <div class="info-item"><div class="info-item__label">عدد الأعضاء</div><div class="info-item__value">${memberCount}</div></div>
+                </div>
+            </div>`;
+
+            // ── لغة لوحة التحكم ──
+            h += `<div class="settings-section">
+                <div class="settings-section__title">لغة لوحة التحكم</div>
+                <p style="font-size:var(--font-size-sm);color:var(--color-text-secondary);margin-bottom:var(--space-3);">اختر اللغة المفضلة للوحة التحكم.</p>
+                <div class="lang-toggle">
+                    <button class="lang-btn ${lang === 'ar' ? 'lang-btn--active' : ''}" data-lang="ar">العربية</button>
+                    <button class="lang-btn ${lang === 'en' ? 'lang-btn--active' : ''}" data-lang="en">English</button>
+                </div>
+            </div>`;
+
+            h += '</div>'; // end general panel
+
+            // ── Billing panel ──
+            h += '<div data-panel="billing" hidden>';
+
+            // ── حالة الاشتراك ──
+            const billingClass = ov.status === 'active' ? 'active' : ov.status === 'trial' ? 'trial' : 'suspended';
+            const billingIcon = {active:'✅',trial:'⏰',suspended:'⚠️',cancelled:'🔴'}[ov.status] || '📋';
+            const billingTitle = {
+                active: `اشتراك نشط — باقة ${planInfo.name}`,
+                trial: `فترة تجريبية — ${trialDays} يوم متبقي`,
+                suspended: 'الاشتراك معلّق — يرجى تحديث الدفع',
+                cancelled: 'الاشتراك ملغى',
+            }[ov.status] || 'غير معروف';
+            const billingDesc = {
+                active: `يتم الخصم تلقائياً عبر متجر تطبيقات سلة — ${planInfo.price} ر.س/شهر`,
+                trial: 'تجربة مجانية كاملة المزايا. بعد انتهائها، اشترك عبر متجر تطبيقات سلة.',
+                suspended: 'فشل الدفع الأخير. حدّث طريقة الدفع من إعدادات سلة لاستعادة الخدمة.',
+                cancelled: 'تم إلغاء الاشتراك. يمكنك إعادة الاشتراك من متجر تطبيقات سلة.',
+            }[ov.status] || '';
+
+            h += `<div class="billing-status billing-status--${billingClass}">
+                <div class="billing-status__icon">${billingIcon}</div>
+                <div class="billing-status__body">
+                    <div class="billing-status__title">${billingTitle}</div>
+                    <div class="billing-status__desc">${billingDesc}</div>
+                </div>
+            </div>`;
+
+            // ── حد الأعضاء ──
+            if (planInfo.limit) {
+                const pct = Math.min(100, Math.round((memberCount / planInfo.limit) * 100));
+                const barClass = pct >= 90 ? 'danger' : pct >= 70 ? 'warn' : 'ok';
+                const nextPlan = PLANS.find(p => p.limit === null || p.limit > planInfo.limit);
+
+                h += `<div class="limit-card">
+                    <div class="limit-card__head">
+                        <div class="limit-card__title">حد الأعضاء — ${planInfo.name}</div>
+                        <div class="limit-card__count">${memberCount} / ${planInfo.limit}</div>
+                    </div>
+                    <div class="limit-bar"><div class="limit-bar__fill limit-bar__fill--${barClass}" style="width:${pct}%;"></div></div>
+                    <div class="limit-card__hint">${pct >= 90 ? '⚠️ أوشكت على الوصول للحد الأقصى! ' + (nextPlan ? 'ترقّ إلى ' + nextPlan.name + ' لإضافة المزيد.' : '') : pct >= 70 ? '💡 استخدمت ' + pct + '% من حد الأعضاء.' : '✅ لديك مساحة كافية.'}</div>
+                </div>`;
+            }
+
+            // ── الدفعة القادمة ──
+            if (ov.status === 'active' || ov.status === 'trial') {
+                const nextDate = new Date();
+                nextDate.setMonth(nextDate.getMonth() + 1);
+                nextDate.setDate(1);
+                h += `<div class="next-charge">
+                    <div style="flex:1;">
+                        <div style="font-size:var(--font-size-xs);color:var(--color-text-secondary);margin-bottom:2px;">الدفعة القادمة</div>
+                        <div class="next-charge__amount">${planInfo.price} ر.س</div>
+                    </div>
+                    <div style="text-align:left;">
+                        <div class="next-charge__date">${fmtDate(nextDate.toISOString())}</div>
+                        <div style="font-size:var(--font-size-xs);color:var(--color-text-secondary);">عبر سلة</div>
+                    </div>
+                </div>`;
+            }
+
+            // ── باقات Member Plus ──
+            h += `<div class="settings-section">
+                <div class="settings-section__title">باقات Member Plus</div>
+                <div class="plans-compare">`;
+            PLANS.forEach(p => {
+                const isCurrent = p.id === currentPlan;
+                const isRec = p.recommended && !isCurrent;
+                h += `<div class="plan-box ${isCurrent ? 'plan-box--current' : ''} ${isRec ? 'plan-box--recommended' : ''}">
+                    ${isCurrent ? '<div class="plan-box__badge">باقتك الحالية</div>' : ''}
+                    ${isRec ? '<div class="plan-box__badge plan-box__badge--rec">الأكثر شعبية</div>' : ''}
+                    <div class="plan-box__name">${p.name}</div>
+                    <div class="plan-box__price">${p.price} <small>ر.س/شهر</small></div>
+                    <div class="plan-box__limit">${p.limit ? 'حتى ' + p.limit + ' عضو' : 'أعضاء بلا حدود'}</div>
+                    <ul class="plan-box__features">${p.features.map(f => '<li>' + f + '</li>').join('')}</ul>
+                    ${isCurrent ? '<span class="btn btn--ghost" style="width:100%;pointer-events:none;opacity:0.5;">الباقة الحالية</span>' : ''}
+                </div>`;
+            });
+            h += '</div>';
+            h += '<p style="text-align:center;font-size:var(--font-size-xs);color:var(--color-text-secondary);margin-top:var(--space-4);">لتغيير باقتك، زر <a href="https://apps.salla.sa" target="_blank" style="color:var(--c-purple);">متجر تطبيقات سلة</a></p>';
+            h += '</div>';
+
+            // ── سجل الفواتير ──
+            h += `<div class="settings-section">
+                <div class="settings-section__title">سجل الفواتير</div>
+                <table class="billing-table">
+                    <thead><tr><th scope="col">التاريخ</th><th scope="col">المبلغ</th><th scope="col">الحالة</th><th scope="col">المرجع</th></tr></thead>
+                    <tbody>`;
+            MOCK_HISTORY.forEach(inv => {
+                const statusCls = inv.status === 'paid' ? 'paid' : inv.status === 'failed' ? 'failed' : 'upcoming';
+                const statusText = {paid:'مدفوع',failed:'فشل',upcoming:'قادمة'}[inv.status] || inv.status;
+                h += `<tr>
+                    <td>${fmtDate(inv.date)}</td>
+                    <td style="font-weight:var(--font-weight-bold);">${inv.amount} ر.س</td>
+                    <td><span class="bill-status bill-status--${statusCls}">${statusText}</span></td>
+                    <td style="font-family:monospace;font-size:var(--font-size-xs);color:var(--color-text-secondary);">${inv.ref}</td>
+                </tr>`;
+            });
+            h += '</tbody></table></div>';
+
+            h += '</div>'; // end billing panel
+
+            // ── Advanced panel ──
+            h += '<div data-panel="advanced" hidden>';
+
+            // ── منطقة الخطر ──
+            h += `<div class="settings-section danger-zone">
+                <div class="settings-section__title">منطقة الخطر</div>
+                <p style="font-size:var(--font-size-sm);color:var(--color-text-secondary);margin-bottom:var(--space-4);">هذه الإجراءات لا يمكن التراجع عنها بسهولة.</p>
+                <div class="danger-actions">
+                    <button class="btn btn--ghost" id="pause-btn" type="button" style="border-color:var(--c-gold);color:var(--c-gold);">⏸ إيقاف مؤقت</button>
+                    <button class="btn btn--ghost" id="deactivate-btn" type="button" style="border-color:var(--c-danger-500);color:var(--c-danger-500);">🗑 إلغاء نهائي</button>
+                </div>
+                <div id="confirm-area"></div>
+            </div>`;
+
+            h += '</div>'; // end advanced panel
+
+            document.getElementById('state-data').innerHTML = h;
+
+            // Wire tabs
+            document.querySelectorAll('[data-tab]').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('[data-tab]').forEach(t => t.classList.remove('settings-tab--active'));
+                    tab.classList.add('settings-tab--active');
+                    document.querySelectorAll('[data-panel]').forEach(p => p.hidden = p.dataset.panel !== tab.dataset.tab);
+                });
+            });
+
+            // Wire language
+            document.querySelectorAll('[data-lang]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('[data-lang]').forEach(b => b.classList.remove('lang-btn--active'));
+                    btn.classList.add('lang-btn--active');
+                    MP.setLang(btn.dataset.lang);
+                    MP.toast(btn.dataset.lang === 'ar' ? 'تم تغيير اللغة' : 'Language updated', 'success');
+                });
+            });
+
+            // Wire danger zone with inline confirmation
+            document.getElementById('pause-btn').addEventListener('click', () => {
+                const area = document.getElementById('confirm-area');
+                area.innerHTML = `<div class="inline-confirm">
+                    <div class="inline-confirm__text">هل أنت متأكد؟</div>
+                    <div class="inline-confirm__actions">
+                        <button class="btn btn--primary" id="confirm-pause-yes" type="button" style="font-size:var(--font-size-xs);">تأكيد</button>
+                        <button class="btn btn--ghost" id="confirm-pause-no" type="button" style="font-size:var(--font-size-xs);">إلغاء</button>
+                    </div>
+                </div>`;
+                document.getElementById('confirm-pause-yes').addEventListener('click', () => { MP.toast('تم الإيقاف المؤقت','warning'); area.innerHTML = ''; });
+                document.getElementById('confirm-pause-no').addEventListener('click', () => { area.innerHTML = ''; });
+            });
+            document.getElementById('deactivate-btn').addEventListener('click', () => {
+                const area = document.getElementById('confirm-area');
+                area.innerHTML = `<div class="inline-confirm">
+                    <div class="inline-confirm__text">⚠️ سيتم إلغاء جميع اشتراكات أعضائك. هل أنت متأكد؟</div>
+                    <div class="inline-confirm__actions">
+                        <button class="btn btn--primary" id="confirm-deactivate-yes" type="button" style="font-size:var(--font-size-xs);background:var(--c-danger-500);border-color:var(--c-danger-500);">تأكيد</button>
+                        <button class="btn btn--ghost" id="confirm-deactivate-no" type="button" style="font-size:var(--font-size-xs);">إلغاء</button>
+                    </div>
+                </div>`;
+                document.getElementById('confirm-deactivate-yes').addEventListener('click', () => { MP.toast('تم الإلغاء','danger'); area.innerHTML = ''; });
+                document.getElementById('confirm-deactivate-no').addEventListener('click', () => { area.innerHTML = ''; });
             });
         }
 
-        async function subscribeTo(tier, btn) {
-            MP.setLoading(btn, true);
-            try {
-                const res = await MP.api('/api/v1/merchant/billing/subscribe', {
-                    method: 'POST', body: JSON.stringify({ tier }),
-                });
-                MP.toast('Subscribed', 'success');
-                lastBilling = { tiers: lastBilling.tiers, subscription: res.subscription };
-                renderBilling(lastBilling);
-            } catch (err) { MP.toast(MP.errorMessage(err, lang), 'danger'); }
-            finally { MP.setLoading(btn, false); }
-        }
-
-        async function confirmSub(id) {
-            const btn = document.getElementById('confirm-btn');
-            MP.setLoading(btn, true);
-            try {
-                const res = await MP.api('/api/v1/merchant/billing/mock-confirm', {
-                    method: 'POST', body: JSON.stringify({ subscription_id: id, success: true }),
-                });
-                MP.toast('Activated', 'success');
-                lastBilling = { tiers: lastBilling.tiers, subscription: res.subscription };
-                renderBilling(lastBilling);
-            } catch (err) { MP.toast(MP.errorMessage(err, lang), 'danger'); }
-            finally { MP.setLoading(btn, false); }
-        }
-
-        if (location.hash === '#billing') {
-            document.getElementById('billing').scrollIntoView({ behavior: 'smooth' });
-        }
-
-        applyLang();
-        loadProfile();
-        loadBilling();
+        load();
     </script>
 </body>
 </html>

@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سجل النشاط — Member Plus</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .activity-toolbar { display: flex; gap: var(--space-3); flex-wrap: wrap; align-items: center; margin-bottom: var(--space-4); }
+        .activity-toolbar select { font: inherit; font-size: var(--font-size-sm); padding: var(--space-2) var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-text-primary); }
+
+        .event-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-4); margin-bottom: var(--space-2); display: flex; align-items: flex-start; gap: var(--space-3); }
+        .event-card__icon { font-size: 20px; flex-shrink: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--color-surface-muted); }
+        .event-card__body { flex: 1; min-width: 0; }
+        .event-card__title { font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: 2px; }
+        .event-card__meta { font-size: var(--font-size-xs); color: var(--color-text-secondary); display: flex; gap: var(--space-3); flex-wrap: wrap; }
+        .event-card__time { font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-inline-start: auto; white-space: nowrap; flex-shrink: 0; }
+
+        .event-card--join { border-inline-start: 3px solid var(--c-success-700); }
+        .event-card--cancel { border-inline-start: 3px solid var(--c-danger-500); }
+        .event-card--charge { border-inline-start: 3px solid var(--c-purple); }
+        .event-card--gift { border-inline-start: 3px solid var(--c-gold); }
+        .event-card--shipping { border-inline-start: 3px solid var(--c-purple); }
+        .event-card--system { border-inline-start: 3px solid var(--color-text-secondary); }
+
+        .date-divider { font-size: var(--font-size-xs); color: var(--color-text-secondary); font-weight: var(--font-weight-bold); padding: var(--space-3) 0 var(--space-2); text-transform: uppercase; letter-spacing: var(--tracking-wide); border-bottom: 1px solid var(--color-border); margin-bottom: var(--space-3); }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar__store">
+                <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-3);"><img src="assets/logo.svg" alt="" style="height:28px"><span style="font-size:var(--font-size-sm);color:rgba(255,255,255,0.7);">Member Plus</span></div>
+                <div class="sidebar__store-name" id="store-name">—</div>
+                <div class="sidebar__trial" id="trial-line">—</div>
+            </div>
+            <nav class="sidebar__nav">
+                <a class="sidebar__link" href="dashboard.html"><span class="icon" aria-hidden="true">📊</span> لوحة التحكم</a>
+                <a class="sidebar__link" href="plans.html"><span class="icon" aria-hidden="true">🏷️</span> إعدادات العضوية</a>
+                <a class="sidebar__link" href="promotions.html"><span class="icon" aria-hidden="true">🎁</span> الهدية الشهرية</a>
+                <a class="sidebar__link" href="members.html"><span class="icon" aria-hidden="true">👥</span> الأعضاء</a>
+                <a class="sidebar__link" href="activity.html" aria-current="page"><span class="icon" aria-hidden="true">📋</span> سجل النشاط</a>
+                <a class="sidebar__link" href="settings.html"><span class="icon" aria-hidden="true">⚙️</span> الإعدادات</a>
+            </nav>
+            <div class="sidebar__footer"><button class="sidebar__link" id="logout-btn" type="button"><span class="icon" aria-hidden="true">⎋</span> تسجيل خروج</button></div>
+        </aside>
+        <div class="sidebar__overlay" id="sidebar-overlay"></div>
+
+        <div class="app-main">
+            <header class="app-topbar">
+                <div style="display:flex;align-items:center;gap:var(--space-3);">
+                    <button class="sidebar__toggle" id="sidebar-toggle" type="button" aria-label="فتح القائمة">☰</button>
+                    <span class="app-topbar__title">سجل النشاط</span>
+                </div>
+            </header>
+
+            <main class="container">
+                <div id="state-loading"><div class="skeleton skeleton--block" style="height:50px;margin-bottom:var(--space-3)"></div><div class="skeleton skeleton--block" style="height:60px;margin-bottom:var(--space-2)"></div><div class="skeleton skeleton--block" style="height:60px;margin-bottom:var(--space-2)"></div><div class="skeleton skeleton--block" style="height:60px"></div></div>
+                <div id="state-error" hidden><div class="empty"><div class="empty__icon">⚠️</div><div class="empty__title">تعذّر تحميل السجل</div><p class="empty__body" id="err-body"></p><button class="btn btn--primary" id="err-retry">إعادة المحاولة</button></div></div>
+                <div id="state-empty" hidden><div class="empty"><div class="empty__icon">📋</div><div class="empty__title">لا يوجد نشاط بعد</div><p class="empty__body">سيظهر هنا كل حدث يتعلق ببرنامج العضوية — اشتراكات، تجديدات، هدايا، وغيرها.</p></div></div>
+
+                <div id="state-data" hidden>
+                    <div class="activity-toolbar">
+                        <select id="filter-type">
+                            <option value="">كل الأحداث</option>
+                            <option value="member.joined">اشتراك جديد</option>
+                            <option value="charge.succeeded">تجديد ناجح</option>
+                            <option value="charge.failed">فشل الدفع</option>
+                            <option value="member.cancelled">إلغاء</option>
+                            <option value="member.expired">انتهاء</option>
+                            <option value="gift.redeemed">استرداد هدية</option>
+                            <option value="gift.generated">إنشاء هدية</option>
+                            <option value="shipping.used">استخدام شحن</option>
+                            <option value="discount_applied">خصم مطبّق</option>
+                        </select>
+                        <select id="filter-preset">
+                            <option value="all" selected>كل الفترات</option>
+                            <option value="today">اليوم</option>
+                            <option value="yesterday">أمس</option>
+                            <option value="week">آخر ٧ أيام</option>
+                            <option value="2weeks">آخر ١٤ يوم</option>
+                            <option value="month">آخر ٣٠ يوم</option>
+                            <option value="3months">آخر ٣ أشهر</option>
+                            <option value="custom">تاريخ مخصص...</option>
+                        </select>
+                    </div>
+                    <div class="activity-toolbar" id="date-range-bar" style="display:none;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:var(--space-3) var(--space-4);">
+                        <div style="display:flex;align-items:center;gap:var(--space-2);">
+                            <label for="date-from" style="font-size:var(--font-size-xs);color:var(--color-text-secondary);white-space:nowrap;">من</label>
+                            <input type="datetime-local" id="date-from" class="input" style="font-size:var(--font-size-sm);padding:var(--space-2) var(--space-3);">
+                        </div>
+                        <div style="display:flex;align-items:center;gap:var(--space-2);">
+                            <label for="date-to" style="font-size:var(--font-size-xs);color:var(--color-text-secondary);white-space:nowrap;">إلى</label>
+                            <input type="datetime-local" id="date-to" class="input" style="font-size:var(--font-size-sm);padding:var(--space-2) var(--space-3);">
+                        </div>
+                        <button class="btn btn--primary" id="apply-dates" style="font-size:var(--font-size-xs);padding:var(--space-2) var(--space-4);">تطبيق</button>
+                        <button class="btn btn--ghost" id="clear-dates" style="font-size:var(--font-size-xs);padding:var(--space-2) var(--space-3);">إلغاء</button>
+                    </div>
+                    <div id="event-list"></div>
+                    <div class="pg-bar" id="pagination"></div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        MP.requireAuth();
+
+        document.getElementById('sidebar-toggle').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('is-open'));
+        document.getElementById('sidebar-overlay').addEventListener('click', () => document.getElementById('sidebar').classList.remove('is-open'));
+        document.getElementById('logout-btn').addEventListener('click', MP.logout);
+        document.getElementById('err-retry').addEventListener('click', load);
+        document.querySelectorAll('.sidebar__nav a').forEach(a => { a.addEventListener('click', (e) => { const t = MP.getToken(); if (t && !a.href.includes('token=')) { e.preventDefault(); window.location.href = a.href + (a.href.includes('?') ? '&' : '?') + 'token=' + t; } }); });
+
+        document.getElementById('filter-type').addEventListener('change', () => applyFilter());
+
+        document.getElementById('filter-preset').addEventListener('change', (e) => {
+            const v = e.target.value;
+            const rangeBar = document.getElementById('date-range-bar');
+            const fromEl = document.getElementById('date-from');
+            const toEl = document.getElementById('date-to');
+
+            if (v === 'custom') {
+                rangeBar.style.display = 'flex';
+                return; // don't filter yet — wait for "تطبيق"
+            }
+
+            rangeBar.style.display = 'none';
+            fromEl.value = ''; toEl.value = '';
+
+            if (v === 'all') { applyFilter(); return; }
+
+            const now = new Date();
+            let from;
+            if (v === 'today') from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            else if (v === 'yesterday') { from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1); toEl.value = toLocalISO(new Date(now.getFullYear(), now.getMonth(), now.getDate())); }
+            else if (v === 'week') from = new Date(now.getTime() - 7*86400000);
+            else if (v === '2weeks') from = new Date(now.getTime() - 14*86400000);
+            else if (v === 'month') from = new Date(now.getTime() - 30*86400000);
+            else if (v === '3months') from = new Date(now.getTime() - 90*86400000);
+            if (from) fromEl.value = toLocalISO(from);
+            if (!toEl.value) toEl.value = toLocalISO(now);
+            applyFilter();
+        });
+
+        document.getElementById('apply-dates').addEventListener('click', () => applyFilter());
+        document.getElementById('clear-dates').addEventListener('click', () => {
+            document.getElementById('date-from').value = '';
+            document.getElementById('date-to').value = '';
+            document.getElementById('date-range-bar').style.display = 'none';
+            document.getElementById('filter-preset').value = 'all';
+            applyFilter();
+        });
+
+        function toLocalISO(d) {
+            const pad = n => String(n).padStart(2,'0');
+            return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
+        }
+
+        function show(w) { ['state-loading','state-error','state-empty','state-data'].forEach(id => { document.getElementById(id).hidden = id !== w; }); }
+
+        const eventConfig = {
+            'member.joined':     {icon: '🎉', label: 'اشتراك جديد',   css: 'join'},
+            'charge.succeeded':  {icon: '💳', label: 'تجديد ناجح',     css: 'charge'},
+            'charge.failed':     {icon: '❌', label: 'فشل الدفع',      css: 'cancel'},
+            'member.cancelled':  {icon: '🚪', label: 'إلغاء اشتراك',   css: 'cancel'},
+            'member.expired':    {icon: '⏰', label: 'انتهاء اشتراك',   css: 'cancel'},
+            'gift.redeemed':     {icon: '🎁', label: 'استرداد هدية',    css: 'gift'},
+            'gift.generated':    {icon: '🎁', label: 'إنشاء هدية',     css: 'gift'},
+            'shipping.used':     {icon: '🚚', label: 'استخدام شحن مجاني', css: 'shipping'},
+            'shipping.generated':{icon: '🚚', label: 'إنشاء كوبون شحن',  css: 'shipping'},
+            'discount_applied':  {icon: '🏷️', label: 'خصم مطبّق',      css: 'charge'},
+            'benefits.activated':{icon: '✅', label: 'تفعيل المزايا',    css: 'join'},
+            'benefits.deactivated':{icon:'🔒', label: 'إلغاء المزايا',  css: 'cancel'},
+        };
+        const defaultEvent = {icon: '📋', label: 'حدث', css: 'system'};
+
+        // Mock data
+        const MOCK_EVENTS = [
+            {id:'e1', event_type:'member.joined', member_id:'m1', metadata:'{"tier":"gold","price":"99.00"}', created_at:'2026-04-17T14:30:00'},
+            {id:'e2', event_type:'gift.redeemed', member_id:'m2', metadata:'{"month":"2026-04","code":"GIFT-A8F2K3","saved":"45.00"}', created_at:'2026-04-17T12:15:00'},
+            {id:'e3', event_type:'shipping.used', member_id:'m3', metadata:'{"month":"2026-04","used":1,"quota":2,"cost":"25.00"}', created_at:'2026-04-17T10:45:00'},
+            {id:'e4', event_type:'charge.succeeded', member_id:'m2', metadata:'{"amount":"99.00","period":"2026-04"}', created_at:'2026-04-16T09:00:00'},
+            {id:'e5', event_type:'discount_applied', member_id:'m1', metadata:'{"order_id":88001,"saved":"32.50","order_total":"215.00"}', created_at:'2026-04-16T16:20:00'},
+            {id:'e6', event_type:'member.joined', member_id:'m11', metadata:'{"tier":"gold","price":"99.00"}', created_at:'2026-04-15T11:00:00'},
+            {id:'e7', event_type:'charge.failed', member_id:'m5', metadata:'{"amount":"99.00","reason":"insufficient_funds"}', created_at:'2026-04-15T08:30:00'},
+            {id:'e8', event_type:'member.cancelled', member_id:'m6', metadata:'{"reason":"customer_request","lost_revenue":"49.00"}', created_at:'2026-04-14T17:00:00'},
+            {id:'e9', event_type:'gift.generated', member_id:'m1', metadata:'{"month":"2026-04","code":"GIFT-X9Y2Z1","value":"25.00"}', created_at:'2026-04-14T03:00:00'},
+            {id:'e10', event_type:'gift.generated', member_id:'m2', metadata:'{"month":"2026-04","code":"GIFT-A8F2K3","value":"25.00"}', created_at:'2026-04-14T03:00:00'},
+            {id:'e11', event_type:'charge.succeeded', member_id:'m3', metadata:'{"amount":"49.00","period":"2026-04"}', created_at:'2026-04-13T09:00:00'},
+            {id:'e12', event_type:'shipping.used', member_id:'m8', metadata:'{"month":"2026-04","used":1,"quota":2,"cost":"20.00"}', created_at:'2026-04-13T14:30:00'},
+            {id:'e13', event_type:'member.joined', member_id:'m10', metadata:'{"tier":"silver","price":"49.00"}', created_at:'2026-04-12T10:00:00'},
+            {id:'e14', event_type:'discount_applied', member_id:'m9', metadata:'{"order_id":87200,"saved":"18.75","order_total":"125.00"}', created_at:'2026-04-12T15:45:00'},
+            {id:'e15', event_type:'charge.succeeded', member_id:'m1', metadata:'{"amount":"99.00","period":"2026-04"}', created_at:'2026-04-11T09:00:00'},
+            {id:'e16', event_type:'member.expired', member_id:'m7', metadata:'{"reason":"period_ended","lost_revenue":"99.00"}', created_at:'2026-04-10T02:00:00'},
+            {id:'e17', event_type:'gift.redeemed', member_id:'m5', metadata:'{"month":"2026-03","code":"GIFT-D3E5F7","saved":"60.00"}', created_at:'2026-04-09T11:20:00'},
+            {id:'e18', event_type:'shipping.generated', member_id:'m4', metadata:'{"month":"2026-04","code":"FS-H7J9K1","quota":2,"cost_estimate":"40.00"}', created_at:'2026-04-08T03:00:00'},
+            {id:'e19', event_type:'charge.succeeded', member_id:'m8', metadata:'{"amount":"49.00","period":"2026-03"}', created_at:'2026-04-07T09:00:00'},
+            {id:'e20', event_type:'member.joined', member_id:'m12', metadata:'{"tier":"silver","price":"49.00"}', created_at:'2026-04-05T13:00:00'},
+        ];
+
+        // Member names for display
+        const memberNames = {m1:'نورة الشمري',m2:'محمد العتيبي',m3:'سارة القحطاني',m4:'عبدالله الدوسري',m5:'ريم المطيري',m6:'فهد الحربي',m7:'هند الزهراني',m8:'خالد السبيعي',m9:'لمى العنزي',m10:'أحمد الغامدي',m11:'منال الشهري',m12:'يوسف البقمي'};
+
+        let allEvents = [];
+
+        const pager = MP.Paginator({
+            perPage: 10,
+            onChange(pageItems) { renderEvents(pageItems); }
+        });
+
+        function fmtDate(iso) {
+            if (!iso) return '—';
+            return new Date(iso).toLocaleDateString('en-US', {year:'numeric', month:'short', day:'numeric'});
+        }
+        function fmtTime(iso) {
+            if (!iso) return '';
+            return new Date(iso).toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
+        }
+        function fmtRelative(iso) {
+            if (!iso) return '—';
+            const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+            if (diff < 60) return 'الآن';
+            if (diff < 3600) return Math.floor(diff / 60) + ' دقيقة';
+            if (diff < 86400) return Math.floor(diff / 3600) + ' ساعة';
+            if (diff < 604800) return Math.floor(diff / 86400) + ' يوم';
+            return fmtDate(iso);
+        }
+
+        async function load() {
+            show('state-loading');
+            try {
+                const [ov, data] = await Promise.all([
+                    MP.api('/api/v1/merchant/overview'),
+                    MP.api('/api/v1/merchant/activity'),
+                ]);
+
+                document.getElementById('store-name').textContent = ov.store_name || '—';
+                if (ov.status === 'trial' && ov.trial_ends_at) {
+                    const d = Math.max(0, Math.ceil((new Date(ov.trial_ends_at) - new Date()) / 86400000));
+                    document.getElementById('trial-line').textContent = d + ' يوم تجربة متبقي';
+                } else {
+                    document.getElementById('trial-line').textContent = ov.status === 'active' ? 'نشط' : ov.status;
+                }
+
+                allEvents = (data.events && data.events.length) ? data.events : MOCK_EVENTS;
+
+                if (!allEvents.length) {
+                    show('state-empty');
+                    return;
+                }
+
+                applyFilter();
+                show('state-data');
+            } catch (err) {
+                document.getElementById('err-body').textContent = MP.errorMessage(err, 'ar');
+                show('state-error');
+            }
+        }
+
+        function applyFilter() {
+            const type = document.getElementById('filter-type').value;
+            let filtered = allEvents;
+            if (type) filtered = filtered.filter(e => e.event_type === type);
+
+            const fromVal = document.getElementById('date-from').value;
+            const toVal = document.getElementById('date-to').value;
+            if (fromVal) {
+                const fromDate = new Date(fromVal);
+                filtered = filtered.filter(e => new Date(e.created_at) >= fromDate);
+            }
+            if (toVal) {
+                const toDate = new Date(toVal);
+                filtered = filtered.filter(e => new Date(e.created_at) <= toDate);
+            }
+
+            pager.setItems(filtered);
+            renderEvents(pager.getPage());
+            pager.render(document.getElementById('pagination'));
+        }
+
+        function parseMetadata(str) {
+            try { return JSON.parse(str); } catch(_) { return {}; }
+        }
+
+        function memberLink(memberId, name) {
+            const token = MP.getToken();
+            return `<a href="members.html?token=${token}&open=${memberId}" style="color:var(--c-purple);font-weight:var(--font-weight-semibold);text-decoration:none;border-bottom:1px dashed var(--c-purple-l);">${name}</a>`;
+        }
+
+        function getAmount(evt) {
+            const meta = parseMetadata(evt.metadata);
+            switch (evt.event_type) {
+                case 'member.joined': return {value: meta.price, type: 'income', label: 'اشتراك'};
+                case 'charge.succeeded': return {value: meta.amount, type: 'income', label: 'تجديد'};
+                case 'charge.failed': return {value: meta.amount, type: 'danger', label: 'فشل تحصيل'};
+                case 'member.cancelled': return {value: meta.lost_revenue, type: 'danger', label: 'إيراد مفقود'};
+                case 'member.expired': return {value: meta.lost_revenue, type: 'danger', label: 'إيراد مفقود'};
+                case 'gift.redeemed': return {value: meta.saved, type: 'cost', label: 'تكلفة هدية'};
+                case 'gift.generated': return {value: meta.value, type: 'cost', label: 'قيمة الهدية'};
+                case 'shipping.used': return {value: meta.cost, type: 'cost', label: 'تكلفة شحن'};
+                case 'shipping.generated': return {value: meta.cost_estimate, type: 'cost', label: 'تكلفة تقديرية'};
+                case 'discount_applied': return {value: meta.saved, type: 'cost', label: 'خصم'};
+                default: return null;
+            }
+        }
+
+        function buildDescription(evt) {
+            const meta = parseMetadata(evt.metadata);
+            const rawName = memberNames[evt.member_id] || evt.member_id || '';
+            const name = memberLink(evt.member_id, rawName);
+
+            switch (evt.event_type) {
+                case 'member.joined':
+                    return `${name} اشترك في الباقة ${meta.tier === 'gold' ? 'الذهبية' : 'الفضية'}`;
+                case 'charge.succeeded':
+                    return `تجديد ناجح لـ ${name}`;
+                case 'charge.failed':
+                    return `فشل الدفع لـ ${name}`;
+                case 'member.cancelled':
+                    return `${name} ألغى اشتراكه`;
+                case 'member.expired':
+                    return `انتهى اشتراك ${name}`;
+                case 'gift.redeemed':
+                    return `${name} استرد هدية ${meta.month || ''}`;
+                case 'gift.generated':
+                    return `تم إنشاء هدية ${meta.month || ''} لـ ${name}`;
+                case 'shipping.used':
+                    return `${name} استخدم شحن مجاني (${meta.used || 0}/${meta.quota || 0})`;
+                case 'shipping.generated':
+                    return `تم إنشاء كوبون شحن لـ ${name}`;
+                case 'discount_applied':
+                    return `خصم مطبّق لـ ${name} — طلب #${meta.order_id || ''}`;
+                default:
+                    return `${(eventConfig[evt.event_type]||defaultEvent).label} — ${name}`;
+            }
+        }
+
+        function renderEvents(rows) {
+            const container = document.getElementById('event-list');
+            if (!rows.length) {
+                container.innerHTML = '<div class="empty" style="padding:var(--space-6);"><div class="empty__icon">📋</div><div class="empty__title">لا توجد أحداث بهذا الفلتر</div></div>';
+                return;
+            }
+
+            let html = '';
+            let lastDate = '';
+
+            rows.forEach(evt => {
+                const cfg = eventConfig[evt.event_type] || defaultEvent;
+                const dateStr = fmtDate(evt.created_at);
+
+                if (dateStr !== lastDate) {
+                    html += `<div class="date-divider">${dateStr}</div>`;
+                    lastDate = dateStr;
+                }
+
+                const amt = getAmount(evt);
+                const amtColors = {income:'var(--c-success-700)', cost:'var(--c-purple)', danger:'var(--c-danger-500)'};
+                const amtBg = {income:'var(--c-success-50)', cost:'var(--c-purple-ll)', danger:'var(--c-danger-50)'};
+                const amtSign = {income:'+', cost:'-', danger:'⚠ '};
+
+                html += `
+                    <div class="event-card event-card--${cfg.css}">
+                        <div class="event-card__icon">${cfg.icon}</div>
+                        <div class="event-card__body">
+                            <div class="event-card__title">${buildDescription(evt)}</div>
+                            <div class="event-card__meta">
+                                <span>${cfg.label}</span>
+                            </div>
+                        </div>
+                        ${amt && amt.value ? `<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0;">
+                            <span style="font-family:var(--font-display);font-size:var(--font-size-lg);font-weight:700;color:${amtColors[amt.type]||'var(--color-text-primary)'};">${amtSign[amt.type]||''}${parseFloat(amt.value).toLocaleString('en-US')} <small style="font-size:var(--font-size-xs);font-weight:400;">ر.س</small></span>
+                            <span style="font-size:11px;color:var(--color-text-secondary);">${amt.label}</span>
+                        </div>` : ''}
+                        <div class="event-card__time">${fmtRelative(evt.created_at)}</div>
+                    </div>`;
+            });
+
+            container.innerHTML = html;
+        }
+
+        load();
+    </script>
+</body>
+</html>

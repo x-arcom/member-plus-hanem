@@ -62,20 +62,40 @@ def create_coupon(
         "amount": 10,              # currency amount or percent (optional)
         "amount_type": "percentage" | "fixed",
         "usage_limit": 1,
-        "valid_days": 30,          # optional
-        "reason": "free string for Salla note",
+        "expiry_date": "2026-04-30",  # YYYY-MM-DD (required by Salla)
+        "free_shipping": False,       # True for free-shipping coupons
+        "customer_ids": [123],        # restrict to specific customers
+        "reason": "free string",
       }
     """
+    from datetime import datetime, timedelta
+
     prefix = payload.get("code_prefix") or (payload.get("kind") or "CPN")[:2].upper()
     fallback_code = _mock_code(prefix)
 
+    is_free_shipping = payload.get("free_shipping", False)
+    expiry = payload.get("expiry_date")
+    if not expiry:
+        expiry = (datetime.utcnow() + timedelta(days=payload.get("valid_days", 30))).strftime("%Y-%m-%d")
+
     salla_body = {
         "code": fallback_code,
-        "amount": payload.get("amount"),
-        "type": payload.get("amount_type", "percentage"),
+        "type": "fixed" if is_free_shipping else payload.get("amount_type", "percentage"),
+        "amount": 0 if is_free_shipping else (payload.get("amount") or 0),
+        "free_shipping": is_free_shipping,
+        "expiry_date": expiry,
+        "exclude_sale_products": payload.get("exclude_sale_products", False),
         "usage_limit": payload.get("usage_limit", 1),
-        "note": payload.get("reason"),
     }
+
+    # Personal coupon: restrict to specific customer IDs
+    customer_ids = payload.get("customer_ids")
+    if customer_ids:
+        salla_body["include_customer_ids"] = customer_ids
+
+    # Per-user usage limit
+    if payload.get("usage_limit_per_user"):
+        salla_body["usage_limit_per_user"] = payload["usage_limit_per_user"]
 
     factory = client_factory or _default_client_factory
     try:

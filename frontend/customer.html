@@ -268,8 +268,8 @@
                 const cost = Number(goldPlan.price || 0) * 12;
                 const net = total - cost;
                 document.getElementById('roi-result').textContent =
-                    `توفير تقريبي: ${total.toLocaleString('ar-SA')} ر.س/سنة` +
-                    (net > 0 ? ` (صافي بعد رسوم العضوية: ${net.toLocaleString('ar-SA')} ر.س)` : '');
+                    `توفير تقريبي: ${total.toLocaleString('en-US')} ر.س/سنة` +
+                    (net > 0 ? ` (صافي بعد رسوم العضوية: ${net.toLocaleString('en-US')} ر.س)` : '');
             }
             input.addEventListener('input', calc);
             calc();

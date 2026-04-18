@@ -80,33 +80,20 @@ def expire_overdue_subscriptions(
 
     Returns `{"expired": n_full, "grace": n_entered_grace}`.
     """
-    from database.models import CustomerSubscription
+    from database.models import Member
 
     now = now or datetime.utcnow()
     db = session_factory()
     to_grace = 0
     to_expired = 0
     try:
+        # Active members past their period end → expired (no grace period per user rule)
         rows = (
-            db.query(CustomerSubscription)
+            db.query(Member)
             .filter(
-                CustomerSubscription.status == "active",
-                CustomerSubscription.expires_at != None,  # noqa: E711
-                CustomerSubscription.expires_at <= now,
-            )
-            .all()
-        )
-        for row in rows:
-            row.status = "grace"
-            row.grace_ends_at = row.expires_at + timedelta(days=grace_days)
-            to_grace += 1
-
-        rows = (
-            db.query(CustomerSubscription)
-            .filter(
-                CustomerSubscription.status == "grace",
-                CustomerSubscription.grace_ends_at != None,  # noqa: E711
-                CustomerSubscription.grace_ends_at <= now,
+                Member.status == "active",
+                Member.current_period_end != None,  # noqa: E711
+                Member.current_period_end <= now,
             )
             .all()
         )
@@ -114,9 +101,9 @@ def expire_overdue_subscriptions(
             row.status = "expired"
             to_expired += 1
 
-        if to_grace or to_expired:
+        if to_expired:
             db.commit()
-            logger.info("expire sweep → %d to grace, %d to expired", to_grace, to_expired)
+            logger.info("expire sweep → %d expired", to_expired)
     finally:
         db.close()
     return {"expired": to_expired, "grace": to_grace}

@@ -90,13 +90,24 @@ def activate_free_shipping(session, member, plan, salla_client=None) -> BenefitR
         return BenefitResult("free_shipping", "skipped", "Already generated for this month")
 
     code = f"FS-{secrets.token_hex(4).upper()}"
+    salla_coupon_id = None
 
-    # TODO Phase 3: Create via Salla Coupon API with:
-    #   free_shipping: true
-    #   include_customer_ids: [member.salla_customer_id]
-    #   usage_limit_per_user: plan.free_shipping_uses
-    #   expiry: last_day
-    # For now: local code (mock-fallback pattern)
+    if salla_client:
+        try:
+            from salla.coupons import create_coupon
+            result = create_coupon(None, member.merchant_id, {
+                "kind": "free_shipping",
+                "code_prefix": "FS",
+                "free_shipping": True,
+                "usage_limit": plan.free_shipping_uses,
+                "usage_limit_per_user": plan.free_shipping_uses,
+                "expiry_date": last_day.strftime("%Y-%m-%d"),
+                "customer_ids": [member.salla_customer_id],
+            }, client_factory=lambda s, m: salla_client)
+            code = result.coupon_code
+            salla_coupon_id = result.salla_coupon_id
+        except Exception as exc:
+            logger.warning("Salla free-shipping coupon creation failed: %s", exc)
 
     coupon = FreeShippingCoupon(
         member_id=member.id,
@@ -143,6 +154,25 @@ def activate_monthly_gift(session, member, plan, salla_client=None) -> BenefitRe
         return BenefitResult("monthly_gift", "skipped", "Already generated for this month")
 
     code = f"GIFT-{secrets.token_hex(4).upper()}"
+    salla_coupon_id = None
+
+    if salla_client:
+        try:
+            from salla.coupons import create_coupon
+            result = create_coupon(None, member.merchant_id, {
+                "kind": "monthly_gift",
+                "code_prefix": "GIFT",
+                "amount": float(plan.discount_pct or 10),
+                "amount_type": "percentage",
+                "usage_limit": 1,
+                "usage_limit_per_user": 1,
+                "expiry_date": last_day.strftime("%Y-%m-%d"),
+                "customer_ids": [member.salla_customer_id],
+            }, client_factory=lambda s, m: salla_client)
+            code = result.coupon_code
+            salla_coupon_id = result.salla_coupon_id
+        except Exception as exc:
+            logger.warning("Salla gift coupon creation failed: %s", exc)
 
     coupon = GiftCoupon(
         member_id=member.id,
@@ -250,11 +280,12 @@ def deactivate_all_benefits(session, member, plan, salla_client=None) -> List[Di
 
     results = []
 
-    # Remove from Salla group
+    # Remove from Salla group — use DELETE with customer_ids in body
     if salla_client and plan.salla_group_id:
         try:
-            salla_client.post(
-                f"https://api.salla.dev/admin/v2/customers/groups/{plan.salla_group_id}/customers/remove",
+            salla_client._call(
+                "DELETE",
+                f"https://api.salla.dev/admin/v2/customers/groups/{plan.salla_group_id}/customers",
                 {"customer_ids": [member.salla_customer_id]},
             )
             results.append({"benefit": "customer_group", "status": "deactivated"})

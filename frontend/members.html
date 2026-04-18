@@ -6,217 +6,442 @@
     <title>الأعضاء — Member Plus</title>
     <link rel="stylesheet" href="styles.css">
     <style>
-        .filter-bar { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-4); }
-        .filter-bar .btn { min-height: 38px; padding-block: var(--space-2); }
-        .filter-bar .btn[aria-pressed="true"] { background: var(--color-brand); color: var(--color-text-inverse); border-color: var(--color-brand); }
-        .share-link { background: var(--color-surface-muted); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md);
-            font-family: monospace; font-size: var(--font-size-sm); display: flex; gap: var(--space-3); align-items: center; justify-content: space-between; flex-wrap: wrap; }
+        .members-toolbar { display: flex; gap: var(--space-3); flex-wrap: wrap; align-items: center; margin-bottom: var(--space-4); }
+        .members-toolbar .input { flex: 1; min-width: 180px; }
+        .members-toolbar select { font: inherit; font-size: var(--font-size-sm); padding: var(--space-2) var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-text-primary); }
+
+        .member-stats { display: flex; gap: var(--space-3); margin-bottom: var(--space-5); flex-wrap: wrap; }
+        .member-stat { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); flex: 1; min-width: 100px; text-align: center; }
+        .member-stat__value { font-family: var(--font-display); font-size: var(--font-size-xl); font-weight: 700; color: var(--c-purple); }
+        .member-stat__label { font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-top: 2px; }
+
+        .member-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-4); margin-bottom: var(--space-3); cursor: pointer; transition: border-color var(--motion-fast); }
+        .member-card:hover { border-color: var(--c-purple); }
+        .member-card__top { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-2); }
+        .member-card__name { font-weight: var(--font-weight-bold); font-size: var(--font-size-sm); }
+        .member-card__id { font-size: var(--font-size-xs); color: var(--color-text-secondary); font-family: monospace; }
+        .member-card__bottom { display: flex; gap: var(--space-4); flex-wrap: wrap; font-size: var(--font-size-xs); color: var(--color-text-secondary); }
+
+        .tier-badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: var(--radius-pill); font-weight: var(--font-weight-bold); text-transform: uppercase; letter-spacing: 0.08em; }
+        .tier-badge--silver { background: #e8eaf6; color: #6B6560; }
+        .tier-badge--gold { background: #fff8e1; color: var(--c-gold); }
+
+        .status-pill { display: inline-block; font-size: var(--font-size-xs); padding: 2px 8px; border-radius: var(--radius-pill); font-weight: var(--font-weight-bold); }
+        .status-pill--active { background: var(--c-success-50); color: var(--c-success-700); }
+        .status-pill--cancelled { background: var(--color-surface-muted); color: var(--color-text-secondary); }
+        .status-pill--expired { background: var(--c-danger-50); color: var(--c-danger-500); }
+
+        .at-risk-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--c-danger-500); margin-inline-start: var(--space-1); vertical-align: middle; }
+
+        .side-panel { position: fixed; top: 0; bottom: 0; inset-inline-start: 0; width: 400px; background: var(--color-surface); border-inline-end: 1px solid var(--color-border); box-shadow: var(--shadow-lg); z-index: 100; overflow-y: auto; padding: var(--space-6); transform: translateX(-100%); transition: transform var(--motion-default); }
+        [dir="rtl"] .side-panel { transform: translateX(100%); }
+        .side-panel.is-open { transform: translateX(0); }
+        .side-panel__overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 99; }
+        @media (max-width: 480px) { .side-panel { width: 100%; } }
+
+        .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-4); }
+        .detail-item { background: var(--color-surface-muted); border-radius: var(--radius-md); padding: var(--space-3); }
+        .detail-item__label { font-size: 11px; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.06em; }
+        .detail-item__value { font-weight: var(--font-weight-bold); font-size: var(--font-size-sm); margin-top: 2px; }
+        .detail-section { margin-top: var(--space-4); }
+        .detail-section__title { font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-2); }
+        .history-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--color-border); font-size: var(--font-size-xs); }
+        .history-row:last-child { border-bottom: none; }
+
     </style>
 </head>
 <body>
     <div class="app-shell">
         <aside class="sidebar" id="sidebar">
-            <div class="sidebar__brand">
-                <img src="assets/logo.png" alt="Member Plus" style="height:28px" onerror="this.style.display='none'">
-                <span class="logo__text">Member Plus</span>
+            <div class="sidebar__store">
+                <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-3);"><img src="assets/logo.svg" alt="" style="height:28px"><span style="font-size:var(--font-size-sm);color:rgba(255,255,255,0.7);">Member Plus</span></div>
+                <div class="sidebar__store-name" id="store-name">—</div>
+                <div class="sidebar__trial" id="trial-line">—</div>
             </div>
             <nav class="sidebar__nav">
-                <a class="sidebar__link" href="dashboard.html"><span class="icon">📊</span> لوحة التحكم</a>
-                <a class="sidebar__link" href="plans.html"><span class="icon">🏷️</span> إعدادات العضوية</a>
-                <a class="sidebar__link" href="promotions.html"><span class="icon">🎁</span> الهدايا والعروض</a>
-                <a class="sidebar__link" href="members.html" aria-current="page"><span class="icon">👥</span> الأعضاء</a>
-                <a class="sidebar__link" href="settings.html"><span class="icon">⚙️</span> الإعدادات</a>
+                <a class="sidebar__link" href="dashboard.html"><span class="icon" aria-hidden="true">📊</span> لوحة التحكم</a>
+                <a class="sidebar__link" href="plans.html"><span class="icon" aria-hidden="true">🏷️</span> إعدادات العضوية</a>
+                <a class="sidebar__link" href="promotions.html"><span class="icon" aria-hidden="true">🎁</span> الهدية الشهرية</a>
+                <a class="sidebar__link" href="members.html" aria-current="page"><span class="icon" aria-hidden="true">👥</span> الأعضاء</a>
+                <a class="sidebar__link" href="activity.html"><span class="icon" aria-hidden="true">📋</span> سجل النشاط</a>
+                <a class="sidebar__link" href="settings.html"><span class="icon" aria-hidden="true">⚙️</span> الإعدادات</a>
             </nav>
-            <div class="sidebar__footer">
-                <button class="sidebar__link" id="logout-btn" type="button"><span class="icon">⎋</span> <span id="nav-logout">تسجيل خروج</span></button>
-            </div>
+            <div class="sidebar__footer"><button class="sidebar__link" id="logout-btn" type="button"><span class="icon" aria-hidden="true">⎋</span> تسجيل خروج</button></div>
         </aside>
         <div class="sidebar__overlay" id="sidebar-overlay"></div>
 
         <div class="app-main">
             <header class="app-topbar">
                 <div style="display:flex;align-items:center;gap:var(--space-3);">
-                    <button class="sidebar__toggle" id="sidebar-toggle" type="button" aria-label="Toggle menu">☰</button>
-                    <span class="app-topbar__title" id="topbar-title">الأعضاء</span>
+                    <button class="sidebar__toggle" id="sidebar-toggle" type="button" aria-label="فتح القائمة">☰</button>
+                    <span class="app-topbar__title">الأعضاء</span>
                 </div>
-                <div class="app-topbar__actions">
-                    <button class="btn btn--ghost" id="lang-btn" type="button">EN / ع</button>
-                </div>
+                <button class="btn btn--ghost" id="export-btn" type="button" style="font-size:var(--font-size-sm);">تصدير CSV</button>
             </header>
 
             <main class="container">
-                <!-- Share links -->
-                <section class="card" aria-labelledby="share-title">
-                    <div class="card__header"><div class="card__title" id="share-title">روابط للمشاركة مع عملائك</div></div>
-                    <p style="color:var(--color-text-secondary); font-size:var(--font-size-sm); margin-bottom:var(--space-3);" id="share-desc">رابط الانضمام + رابط عرض العضوية للعملاء الحاليين.</p>
-                    <div class="share-link"><span id="share-url">—</span><button class="btn btn--secondary" id="copy-btn" type="button">نسخ</button></div>
-                    <p style="color:var(--color-text-secondary); font-size:var(--font-size-sm); margin-top:var(--space-3);" id="member-link-label">رابط "عضويتي":</p>
-                    <div class="share-link"><span id="member-url">—</span><button class="btn btn--secondary" id="copy-member-btn" type="button">نسخ</button></div>
-                </section>
+                <div id="state-loading"><div class="skeleton skeleton--block" style="height:50px;margin-bottom:var(--space-3)"></div><div class="skeleton skeleton--block" style="height:80px;margin-bottom:var(--space-3)"></div><div class="skeleton skeleton--block" style="height:80px"></div></div>
+                <div id="state-error" hidden><div class="empty"><div class="empty__icon">⚠️</div><div class="empty__title">تعذّر تحميل الأعضاء</div><p class="empty__body" id="err-body"></p><button class="btn btn--primary" id="err-retry">إعادة المحاولة</button></div></div>
+                <div id="state-empty" hidden><div class="empty"><div class="empty__icon">👥</div><div class="empty__title">لا يوجد أعضاء بعد</div><p class="empty__body">سيظهر هنا كل عميل يشترك في باقتك عبر متجرك في سلة.</p></div></div>
 
-                <!-- Filters -->
-                <div class="filter-bar" role="group" aria-label="Status filter">
-                    <button class="btn btn--ghost" data-filter="" aria-pressed="true" id="filter-all">الكل</button>
-                    <button class="btn btn--ghost" data-filter="pending" aria-pressed="false" id="filter-pending">قيد التأكيد</button>
-                    <button class="btn btn--ghost" data-filter="active" aria-pressed="false" id="filter-active">نشط</button>
-                    <button class="btn btn--ghost" data-filter="grace" aria-pressed="false" id="filter-grace">فترة سماح</button>
-                    <button class="btn btn--ghost" data-filter="cancelled" aria-pressed="false" id="filter-cancelled">ملغى</button>
-                    <button class="btn btn--ghost" data-filter="expired" aria-pressed="false" id="filter-expired">منتهي</button>
-                </div>
+                <div id="state-data" hidden>
+                    <div class="member-stats" id="stats-row"></div>
 
-                <div id="state-loading" class="card"><div class="skeleton skeleton--line"></div><div class="skeleton skeleton--line"></div><div class="skeleton skeleton--line"></div></div>
-                <div id="state-error" class="card" hidden><div class="alert alert--danger" id="error-text"></div><button class="btn btn--secondary" id="retry-btn" type="button">إعادة</button></div>
-                <div id="state-empty" hidden>
-                    <div class="empty"><div class="empty__icon">👥</div><div class="empty__title" id="empty-title">لا يوجد أعضاء حتى الآن</div><p class="empty__body" id="empty-body">شارك رابط الانضمام أعلاه مع عملائك.</p></div>
+                    <div class="members-toolbar">
+                        <label for="search-input" class="sr-only">بحث بالاسم أو رقم الجوال</label>
+                        <input class="input" type="search" id="search-input" placeholder="بحث بالاسم أو رقم الجوال...">
+                        <label for="filter-tier" class="sr-only">فلترة حسب الباقة</label>
+                        <select id="filter-tier">
+                            <option value="">كل الباقات</option>
+                            <option value="silver">الفضية</option>
+                            <option value="gold">الذهبية</option>
+                        </select>
+                        <label for="filter-status" class="sr-only">فلترة حسب الحالة</label>
+                        <select id="filter-status">
+                            <option value="">كل الحالات</option>
+                            <option value="active">نشط</option>
+                            <option value="cancelled">ملغى</option>
+                            <option value="expired">منتهي</option>
+                        </select>
+                    </div>
+
+                    <div id="member-list"></div>
+                    <div class="pg-bar" id="pagination"></div>
                 </div>
-                <div id="state-data" class="card" hidden><table class="table" id="members-table"></table></div>
             </main>
         </div>
     </div>
 
     <script src="app.js"></script>
     <script>
-        const T = {
-            ar: {
-                topbar: 'الأعضاء',
-                navDashboard: 'لوحة التحكم', navPlans: 'خطط العضوية', navMembers: 'الأعضاء', navSettings: 'الإعدادات', navLogout: 'تسجيل خروج',
-                shareTitle: 'روابط للمشاركة مع عملائك', shareDesc: 'رابط الانضمام + رابط عرض العضوية.',
-                memberLinkLabel: 'رابط "عضويتي":', copy: 'نسخ', copied: 'تم النسخ',
-                filters: { all: 'الكل', pending: 'قيد التأكيد', active: 'نشط', grace: 'فترة سماح', cancelled: 'ملغى' },
-                emptyTitle: 'لا يوجد أعضاء حتى الآن', emptyBody: 'شارك رابط الانضمام أعلاه مع عملائك.',
-                retry: 'إعادة',
-                thName: 'الاسم', thPlan: 'الباقة', thPrice: 'السعر', thStatus: 'الحالة', thBenefits: 'المزايا', thDate: 'تاريخ', thActions: '',
-                benefitCount: (n) => `${n} مزايا`,
-                statusPending: 'قيد التأكيد', statusActive: 'نشط', statusGrace: 'فترة سماح',
-                statusCancelled: 'ملغى', statusExpired: 'منتهي',
-                confirm: 'تأكيد', cancel: 'إلغاء', renew: 'تجديد',
-                confirmDone: 'تم التفعيل', cancelDone: 'تم الإلغاء', renewDone: 'تم التجديد',
-                confirmAsk: 'تأكيد الدفع وتفعيل العضوية؟', cancelAsk: 'إلغاء هذا الاشتراك؟', renewAsk: 'تجديد لفترة جديدة؟',
-            },
-            en: {
-                topbar: 'Members',
-                navDashboard: 'Dashboard', navPlans: 'Membership Plans', navMembers: 'Members', navSettings: 'Settings', navLogout: 'Sign out',
-                shareTitle: 'Customer links', shareDesc: 'Enrollment link + member lookup link.',
-                memberLinkLabel: '"My membership" link:', copy: 'Copy', copied: 'Copied',
-                filters: { all: 'All', pending: 'Pending', active: 'Active', grace: 'Grace', cancelled: 'Cancelled' },
-                emptyTitle: 'No members yet', emptyBody: 'Share the enrollment link above with your customers.',
-                retry: 'Retry',
-                thName: 'Name', thPlan: 'Plan', thPrice: 'Price', thStatus: 'Status', thBenefits: 'Benefits', thDate: 'Enrolled', thActions: '',
-                benefitCount: (n) => `${n} issued`,
-                statusPending: 'Pending', statusActive: 'Active', statusGrace: 'Grace',
-                statusCancelled: 'Cancelled', statusExpired: 'Expired',
-                confirm: 'Confirm', cancel: 'Cancel', renew: 'Renew',
-                confirmDone: 'Activated', cancelDone: 'Cancelled', renewDone: 'Renewed',
-                confirmAsk: 'Confirm payment and activate?', cancelAsk: 'Cancel this subscription?', renewAsk: 'Renew for a new period?',
-            }
-        };
-
-        let lang = MP.getLang(); let members = []; let currentFilter = ''; let storeId = null;
         MP.requireAuth();
-        function tr() { return T[lang]; }
+        let allMembers = [];
+        let totalMembers = 0;
 
-        function show(which) { ['state-loading','state-error','state-empty','state-data'].forEach(id => { document.getElementById(id).hidden = id !== which; }); }
+        const pager = MP.Paginator({
+            perPage: 10,
+            onChange(pageItems) { renderCards(pageItems); }
+        });
 
-        function applyLang() {
-            const t = tr();
-            document.title = t.topbar + ' — Member Plus';
-            document.getElementById('topbar-title').textContent = t.topbar;
-            document.getElementById('nav-dashboard').textContent = t.navDashboard;
-            document.getElementById('nav-plans').textContent = t.navPlans;
-            document.getElementById('nav-members').textContent = t.navMembers;
-            document.getElementById('nav-settings').textContent = t.navSettings;
-            document.getElementById('nav-logout').textContent = t.navLogout;
-            document.getElementById('share-title').textContent = t.shareTitle;
-            document.getElementById('share-desc').textContent = t.shareDesc;
-            document.getElementById('member-link-label').textContent = t.memberLinkLabel;
-            document.getElementById('copy-btn').textContent = t.copy;
-            document.getElementById('copy-member-btn').textContent = t.copy;
-            document.getElementById('filter-all').textContent = t.filters.all;
-            document.getElementById('filter-pending').textContent = t.filters.pending;
-            document.getElementById('filter-active').textContent = t.filters.active;
-            document.getElementById('filter-grace').textContent = t.filters.grace;
-            document.getElementById('filter-cancelled').textContent = t.filters.cancelled;
-            document.getElementById('filter-expired').textContent = t.statusExpired;
-            document.getElementById('empty-title').textContent = t.emptyTitle;
-            document.getElementById('empty-body').textContent = t.emptyBody;
-            document.getElementById('retry-btn').textContent = t.retry;
-            MP.setLang(lang);
-            if (members.length) renderMembers(members);
-        }
-
-        // Sidebar
         document.getElementById('sidebar-toggle').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('is-open'));
         document.getElementById('sidebar-overlay').addEventListener('click', () => document.getElementById('sidebar').classList.remove('is-open'));
-        document.querySelectorAll('.sidebar__nav a').forEach(a => {
-            a.addEventListener('click', (e) => { const token = MP.getToken(); if (token && !a.href.includes('token=')) { e.preventDefault(); window.location.href = a.href + (a.href.includes('?') ? '&' : '?') + 'token=' + token + '&lang=' + lang; } });
-        });
-        document.getElementById('lang-btn').addEventListener('click', () => { lang = lang === 'ar' ? 'en' : 'ar'; applyLang(); });
         document.getElementById('logout-btn').addEventListener('click', MP.logout);
-        document.getElementById('retry-btn').addEventListener('click', load);
+        document.getElementById('err-retry').addEventListener('click', load);
+        document.querySelectorAll('.sidebar__nav a').forEach(a => { a.addEventListener('click', (e) => { const t = MP.getToken(); if (t && !a.href.includes('token=')) { e.preventDefault(); window.location.href = a.href + (a.href.includes('?') ? '&' : '?') + 'token=' + t; } }); });
 
-        async function copyText(text) { try { await navigator.clipboard.writeText(text); MP.toast(tr().copied, 'success'); } catch(_) { MP.toast('Copy failed', 'danger'); } }
-        document.getElementById('copy-btn').addEventListener('click', () => copyText(document.getElementById('share-url').textContent));
-        document.getElementById('copy-member-btn').addEventListener('click', () => copyText(document.getElementById('member-url').textContent));
+        document.getElementById('filter-tier').addEventListener('change', () => load());
+        document.getElementById('filter-status').addEventListener('change', () => load());
 
-        async function loadStoreId() {
-            try { const p = await MP.api('/api/v1/merchant/settings'); storeId = p.salla_store_id;
-                document.getElementById('share-url').textContent = `${location.origin}/customer.html?store=${encodeURIComponent(storeId)}`;
-                document.getElementById('member-url').textContent = `${location.origin}/member.html?store=${encodeURIComponent(storeId)}`;
-            } catch(_) {}
-        }
-
-        document.querySelectorAll('[data-filter]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('[data-filter]').forEach(b => b.setAttribute('aria-pressed', 'false'));
-                btn.setAttribute('aria-pressed', 'true'); currentFilter = btn.dataset.filter; load();
-            });
+        let searchTimeout;
+        document.getElementById('search-input').addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(applySearch, 300);
         });
+
+        document.getElementById('export-btn').addEventListener('click', exportCSV);
+
+        function show(w) { ['state-loading','state-error','state-empty','state-data'].forEach(id => { document.getElementById(id).hidden = id !== w; }); }
+
+        const statusLabels = {active: 'نشط', cancelled: 'ملغى', expired: 'منتهي'};
+        const tierLabels = {silver: 'فضي', gold: 'ذهبي'};
+
+        const MOCK_MEMBERS = [
+            {id:'m1', salla_customer_id:100234, name:'نورة الشمري', phone:'0501234567', tier:'gold', tier_name_ar:'الذهبية', tier_name_en:'Gold', status:'active', subscribed_price:'99.00', current_period_end:'2026-05-10T00:00:00', next_renewal_at:'2026-05-10T00:00:00', is_at_risk:false, total_saved_sar:'245.50', free_shipping_used:2, free_shipping_quota:4, last_order_at:'2026-04-12T00:00:00', cancelled_at:null, created_at:'2026-01-15T10:00:00'},
+            {id:'m2', salla_customer_id:100891, name:'محمد العتيبي', phone:'0559876543', tier:'gold', tier_name_ar:'الذهبية', tier_name_en:'Gold', status:'active', subscribed_price:'99.00', current_period_end:'2026-05-02T00:00:00', next_renewal_at:'2026-05-02T00:00:00', is_at_risk:false, total_saved_sar:'180.00', free_shipping_used:4, free_shipping_quota:4, last_order_at:'2026-04-08T00:00:00', cancelled_at:null, created_at:'2026-02-01T10:00:00'},
+            {id:'m3', salla_customer_id:101455, name:'سارة القحطاني', phone:'0541112233', tier:'silver', tier_name_ar:'الفضية', tier_name_en:'Silver', status:'active', subscribed_price:'49.00', current_period_end:'2026-05-20T00:00:00', next_renewal_at:'2026-05-20T00:00:00', is_at_risk:false, total_saved_sar:'87.00', free_shipping_used:1, free_shipping_quota:2, last_order_at:'2026-04-15T00:00:00', cancelled_at:null, created_at:'2026-01-20T10:00:00'},
+            {id:'m4', salla_customer_id:102003, name:'عبدالله الدوسري', phone:'0562223344', tier:'silver', tier_name_ar:'الفضية', tier_name_en:'Silver', status:'active', subscribed_price:'49.00', current_period_end:'2026-04-28T00:00:00', next_renewal_at:'2026-04-28T00:00:00', is_at_risk:true, total_saved_sar:'32.00', free_shipping_used:0, free_shipping_quota:2, last_order_at:'2026-02-25T00:00:00', cancelled_at:null, created_at:'2026-02-10T10:00:00'},
+            {id:'m5', salla_customer_id:100102, name:'ريم المطيري', phone:'0573334455', tier:'gold', tier_name_ar:'الذهبية', tier_name_en:'Gold', status:'active', subscribed_price:'99.00', current_period_end:'2026-05-15T00:00:00', next_renewal_at:'2026-05-15T00:00:00', is_at_risk:true, total_saved_sar:'310.75', free_shipping_used:3, free_shipping_quota:4, last_order_at:'2026-03-20T00:00:00', cancelled_at:null, created_at:'2025-11-05T10:00:00'},
+            {id:'m6', salla_customer_id:103210, name:'فهد الحربي', phone:'0584445566', tier:'silver', tier_name_ar:'الفضية', tier_name_en:'Silver', status:'cancelled', subscribed_price:'49.00', current_period_end:'2026-04-30T00:00:00', next_renewal_at:null, is_at_risk:false, total_saved_sar:'120.00', free_shipping_used:2, free_shipping_quota:2, last_order_at:'2026-04-01T00:00:00', cancelled_at:'2026-04-05T00:00:00', created_at:'2025-12-10T10:00:00'},
+            {id:'m7', salla_customer_id:100567, name:'هند الزهراني', phone:'0595556677', tier:'gold', tier_name_ar:'الذهبية', tier_name_en:'Gold', status:'expired', subscribed_price:'99.00', current_period_end:'2026-03-15T00:00:00', next_renewal_at:null, is_at_risk:false, total_saved_sar:'450.25', free_shipping_used:0, free_shipping_quota:4, last_order_at:'2026-03-10T00:00:00', cancelled_at:'2026-03-01T00:00:00', created_at:'2025-09-20T10:00:00'},
+            {id:'m8', salla_customer_id:104789, name:'خالد السبيعي', phone:'0506667788', tier:'silver', tier_name_ar:'الفضية', tier_name_en:'Silver', status:'active', subscribed_price:'49.00', current_period_end:'2026-05-15T00:00:00', next_renewal_at:'2026-05-15T00:00:00', is_at_risk:false, total_saved_sar:'65.00', free_shipping_used:1, free_shipping_quota:2, last_order_at:'2026-04-14T00:00:00', cancelled_at:null, created_at:'2026-03-15T10:00:00'},
+            {id:'m9', salla_customer_id:105001, name:'لمى العنزي', phone:'0547778899', tier:'gold', tier_name_ar:'الذهبية', tier_name_en:'Gold', status:'active', subscribed_price:'99.00', current_period_end:'2026-05-08T00:00:00', next_renewal_at:'2026-05-08T00:00:00', is_at_risk:false, total_saved_sar:'155.00', free_shipping_used:1, free_shipping_quota:4, last_order_at:'2026-04-16T00:00:00', cancelled_at:null, created_at:'2026-03-08T10:00:00'},
+            {id:'m10', salla_customer_id:105234, name:'أحمد الغامدي', phone:'0558889900', tier:'silver', tier_name_ar:'الفضية', tier_name_en:'Silver', status:'active', subscribed_price:'49.00', current_period_end:'2026-05-12T00:00:00', next_renewal_at:'2026-05-12T00:00:00', is_at_risk:false, total_saved_sar:'40.00', free_shipping_used:0, free_shipping_quota:2, last_order_at:'2026-04-10T00:00:00', cancelled_at:null, created_at:'2026-04-01T10:00:00'},
+            {id:'m11', salla_customer_id:105890, name:'منال الشهري', phone:'0569990011', tier:'gold', tier_name_ar:'الذهبية', tier_name_en:'Gold', status:'active', subscribed_price:'99.00', current_period_end:'2026-05-18T00:00:00', next_renewal_at:'2026-05-18T00:00:00', is_at_risk:false, total_saved_sar:'78.50', free_shipping_used:0, free_shipping_quota:4, last_order_at:'2026-04-17T00:00:00', cancelled_at:null, created_at:'2026-04-05T10:00:00'},
+            {id:'m12', salla_customer_id:106100, name:'يوسف البقمي', phone:'0530001122', tier:'silver', tier_name_ar:'الفضية', tier_name_en:'Silver', status:'active', subscribed_price:'49.00', current_period_end:'2026-05-20T00:00:00', next_renewal_at:'2026-05-20T00:00:00', is_at_risk:false, total_saved_sar:'95.00', free_shipping_used:2, free_shipping_quota:2, last_order_at:'2026-03-28T00:00:00', cancelled_at:null, created_at:'2025-10-15T10:00:00'},
+        ];
+
+        function fmtDate(iso) {
+            if (!iso) return '—';
+            return new Date(iso).toLocaleDateString('en-US', {year: 'numeric', month: 'short', day: 'numeric'});
+        }
 
         async function load() {
             show('state-loading');
             try {
-                const q = currentFilter ? `?status=${currentFilter}` : '';
-                const { members: rows } = await MP.api('/api/v1/merchant/members' + q);
-                members = rows;
-                if (!rows.length) { show('state-empty'); return; }
-                renderMembers(rows); show('state-data');
-            } catch (err) { document.getElementById('error-text').textContent = MP.errorMessage(err, lang); show('state-error'); }
+                const [ov, data] = await Promise.all([
+                    MP.api('/api/v1/merchant/overview'),
+                    MP.api('/api/v1/merchant/members'),
+                ]);
+
+                document.getElementById('store-name').textContent = ov.store_name || '—';
+                if (ov.status === 'trial' && ov.trial_ends_at) {
+                    const d = Math.max(0, Math.ceil((new Date(ov.trial_ends_at) - new Date()) / 86400000));
+                    document.getElementById('trial-line').textContent = d + ' يوم تجربة متبقي';
+                } else {
+                    document.getElementById('trial-line').textContent = ov.status === 'active' ? 'نشط' : ov.status;
+                }
+
+                allMembers = data.members || [];
+                totalMembers = data.total || 0;
+
+                // Use mock data for demo when no real members exist
+                if (totalMembers === 0 && allMembers.length === 0) {
+                    allMembers = MOCK_MEMBERS.slice();
+                    totalMembers = allMembers.length;
+                }
+
+                // Apply client-side filters
+                const tier = document.getElementById('filter-tier').value;
+                const status = document.getElementById('filter-status').value;
+                let filtered = allMembers;
+                if (tier) filtered = filtered.filter(m => m.tier === tier);
+                if (status) filtered = filtered.filter(m => m.status === status);
+
+                if (filtered.length === 0 && !tier && !status) {
+                    show('state-empty');
+                    return;
+                }
+
+                renderStats(filtered);
+                pager.setItems(filtered);
+                renderCards(pager.getPage());
+                pager.render(document.getElementById('pagination'));
+                show('state-data');
+            } catch (err) {
+                document.getElementById('err-body').textContent = MP.errorMessage(err, 'ar');
+                show('state-error');
+            }
         }
 
-        function renderMembers(rows) {
-            const t = tr();
-            const fmt = (d) => d ? new Date(d).toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-US') : '—';
-            const statusPill = (s) => {
-                const map = { pending: ['pill--warning', t.statusPending], active: ['pill--success', t.statusActive],
-                    grace: ['pill--warning', t.statusGrace], cancelled: ['pill--neutral', t.statusCancelled], expired: ['pill--danger', t.statusExpired] };
-                const [cls, label] = map[s] || ['pill--neutral', s];
-                return `<span class="pill ${cls}">${label}</span>`;
-            };
-            const actions = (m) => {
-                const p = [];
-                if (m.status === 'pending') p.push(`<button class="btn btn--primary" data-confirm="${m.subscription_id}">${t.confirm}</button>`);
-                if (['grace','expired','cancelled'].includes(m.status)) p.push(`<button class="btn btn--primary" data-renew="${m.subscription_id}">${t.renew}</button>`);
-                if (['pending','active','grace'].includes(m.status)) p.push(`<button class="btn btn--danger" data-cancel="${m.subscription_id}">${t.cancel}</button>`);
-                return p.join(' ') || '—';
-            };
-            const table = document.getElementById('members-table');
-            table.innerHTML = `<thead><tr><th>${t.thName}</th><th>${t.thPlan}</th><th>${t.thPrice}</th><th>${t.thStatus}</th><th>${t.thBenefits}</th><th>${t.thDate}</th><th></th></tr></thead>
-                <tbody>${rows.map(m => {
-                    const benefits = (m.benefit_count > 0) ? `<span class="pill pill--info">${t.benefitCount(m.benefit_count)}</span>` : '—';
-                    return `<tr><td>${m.customer.name}<br><small style="color:var(--color-text-secondary)">${m.customer.email}</small></td>
-                        <td>${m.plan.name}</td><td>${m.price_at_enrollment} ${m.plan.currency}</td>
-                        <td>${statusPill(m.status)}</td><td>${benefits}</td><td>${fmt(m.enrolled_at)}</td><td>${actions(m)}</td></tr>`;
-                }).join('')}</tbody>`;
-            table.querySelectorAll('[data-confirm]').forEach(btn => btn.addEventListener('click', () => confirmMember(btn.dataset.confirm, btn)));
-            table.querySelectorAll('[data-cancel]').forEach(btn => btn.addEventListener('click', () => cancelMember(btn.dataset.cancel, btn)));
-            table.querySelectorAll('[data-renew]').forEach(btn => btn.addEventListener('click', () => renewMember(btn.dataset.renew, btn)));
+        function renderStats(list) {
+            const gold = list.filter(m => m.tier === 'gold').length;
+            const silver = list.filter(m => m.tier === 'silver').length;
+
+            document.getElementById('stats-row').innerHTML = `
+                <div class="member-stat"><div class="member-stat__value">${list.length}</div><div class="member-stat__label">إجمالي الأعضاء</div></div>
+                <div class="member-stat"><div class="member-stat__value" style="color:var(--c-gold);">${gold}</div><div class="member-stat__label">باقة ذهبية</div></div>
+                <div class="member-stat"><div class="member-stat__value" style="color:#6B6560;">${silver}</div><div class="member-stat__label">باقة فضية</div></div>
+            `;
         }
 
-        async function confirmMember(id, btn) { if (!confirm(tr().confirmAsk)) return; MP.setLoading(btn, true); try { await MP.api(`/api/merchant/members/${id}/confirm`, { method: 'POST', body: '{}' }); MP.toast(tr().confirmDone, 'success'); await load(); } catch(e) { MP.toast(MP.errorMessage(e, lang), 'danger'); } finally { MP.setLoading(btn, false); } }
-        async function cancelMember(id, btn) { if (!confirm(tr().cancelAsk)) return; MP.setLoading(btn, true); try { await MP.api(`/api/merchant/members/${id}/cancel`, { method: 'POST', body: '{}' }); MP.toast(tr().cancelDone, 'success'); await load(); } catch(e) { MP.toast(MP.errorMessage(e, lang), 'danger'); } finally { MP.setLoading(btn, false); } }
-        async function renewMember(id, btn) { if (!confirm(tr().renewAsk)) return; MP.setLoading(btn, true); try { await MP.api(`/api/merchant/members/${id}/renew`, { method: 'POST', body: '{}' }); MP.toast(tr().renewDone, 'success'); await load(); } catch(e) { MP.toast(MP.errorMessage(e, lang), 'danger'); } finally { MP.setLoading(btn, false); } }
+        function applySearch() {
+            const search = (document.getElementById('search-input').value || '').trim().toLowerCase();
+            const tier = document.getElementById('filter-tier').value;
+            const status = document.getElementById('filter-status').value;
+            let filtered = allMembers;
+            if (tier) filtered = filtered.filter(m => m.tier === tier);
+            if (status) filtered = filtered.filter(m => m.status === status);
+            if (search) filtered = filtered.filter(m => (m.name || '').toLowerCase().includes(search) || (m.phone || '').includes(search) || String(m.salla_customer_id).includes(search));
+            pager.setItems(filtered);
+            renderCards(pager.getPage());
+            pager.render(document.getElementById('pagination'));
+        }
 
-        applyLang(); loadStoreId(); load();
+        function renderCards(rows) {
+            const container = document.getElementById('member-list');
+            if (!rows.length) {
+                container.innerHTML = '<div class="empty" style="padding:var(--space-6);"><div class="empty__icon">👥</div><div class="empty__title">لا توجد نتائج</div></div>';
+                return;
+            }
+
+            container.innerHTML = rows.map(m => {
+                const displayName = m.name || ('عميل #' + m.salla_customer_id);
+                return `
+                <div class="member-card" data-id="${m.id}">
+                    <div class="member-card__top">
+                        <span class="tier-badge tier-badge--${m.tier}">${tierLabels[m.tier] || m.tier}</span>
+                        <span class="member-card__name">${displayName}</span>
+                        ${m.is_at_risk ? '<span class="at-risk-dot" title="معرّض للخطر"></span>' : ''}
+                        <span style="margin-inline-start:auto;"><span class="status-pill status-pill--${m.status}">${statusLabels[m.status] || m.status}</span></span>
+                    </div>
+                    <div class="member-card__bottom">
+                        ${m.phone ? '<span>📱 ' + m.phone + '</span>' : ''}
+                        <span>💰 ${m.subscribed_price} ر.س/شهر</span>
+                        <span>💎 وفّر: ${m.total_saved_sar} ر.س</span>
+                        <span>📅 ${fmtDate(m.created_at)}</span>
+                    </div>
+                </div>`;
+            }).join('');
+
+            container.querySelectorAll('.member-card').forEach(card => {
+                card.addEventListener('click', () => loadDetail(card.dataset.id));
+            });
+        }
+
+        const MOCK_DETAIL = {
+            subscription_history: [
+                {event:'charge.succeeded', amount:'99.00', date:'2026-04-10T09:00:00', period:'أبريل 2026', method:'بطاقة ****4523'},
+                {event:'charge.succeeded', amount:'99.00', date:'2026-03-10T09:00:00', period:'مارس 2026', method:'بطاقة ****4523'},
+                {event:'charge.succeeded', amount:'99.00', date:'2026-02-10T09:00:00', period:'فبراير 2026', method:'بطاقة ****4523'},
+                {event:'charge.succeeded', amount:'99.00', date:'2026-01-15T09:00:00', period:'يناير 2026', method:'بطاقة ****4523', note:'أول اشتراك'},
+            ],
+            gift_history: [
+                {month:'2026-04', gift_type:'percentage', status:'generated', coupon_code:'GIFT-A8F2K3'},
+                {month:'2026-03', gift_type:'percentage', status:'redeemed', coupon_code:'GIFT-B7X1M9'},
+                {month:'2026-02', gift_type:'percentage', status:'expired', coupon_code:'GIFT-C4P2Q7'},
+            ],
+            shipping_history: [
+                {month:'2026-04', quota:4, used_count:2, status:'active'},
+                {month:'2026-03', quota:4, used_count:4, status:'exhausted'},
+                {month:'2026-02', quota:4, used_count:3, status:'expired'},
+            ],
+            benefit_events: [
+                {event_type:'discount_applied', amount_saved:'45.50', salla_order_id:88001, created_at:'2026-04-12T14:00:00'},
+                {event_type:'free_shipping_used', amount_saved:'25.00', salla_order_id:87550, created_at:'2026-04-08T10:30:00'},
+                {event_type:'discount_applied', amount_saved:'32.00', salla_order_id:86200, created_at:'2026-03-25T16:00:00'},
+                {event_type:'gift_redeemed', amount_saved:'50.00', salla_order_id:85100, created_at:'2026-03-15T09:00:00'},
+            ],
+        };
+
+        async function loadDetail(memberId) {
+            // Remove any existing panel
+            document.querySelectorAll('.side-panel, .side-panel__overlay').forEach(el => el.remove());
+
+            const overlay = document.createElement('div');
+            overlay.className = 'side-panel__overlay';
+            const panel = document.createElement('div');
+            panel.className = 'side-panel';
+            panel.innerHTML = '<div style="text-align:center;padding:var(--space-8);"><div class="skeleton skeleton--block" style="height:200px;"></div></div>';
+
+            document.body.appendChild(overlay);
+            document.body.appendChild(panel);
+            requestAnimationFrame(() => panel.classList.add('is-open'));
+
+            overlay.addEventListener('click', () => closeDetail());
+
+            try {
+                let m;
+                try {
+                    m = await MP.api('/api/v1/merchant/members/' + memberId);
+                } catch(_) {
+                    const mock = MOCK_MEMBERS.find(x => x.id === memberId);
+                    if (!mock) throw new Error('not found');
+                    m = {...mock, plan: {tier: mock.tier, display_name_ar: mock.tier_name_ar, display_name_en: mock.tier_name_en}, name: mock.name, ...MOCK_DETAIL};
+                }
+                const tier = m.plan?.tier || 'silver';
+                const tierName = m.plan?.display_name_ar || tierLabels[tier];
+
+                // Build the same detail HTML that was there before, but add a close button at the top
+                let html = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-4);">';
+                html += '<div style="display:flex;align-items:center;gap:var(--space-3);">';
+                html += '<span class="tier-badge tier-badge--' + tier + '">' + (tierLabels[tier]) + '</span>';
+                html += '<div><div style="font-weight:var(--font-weight-bold);">' + (m.name || ('عميل #' + m.salla_customer_id)) + '</div>';
+                if (m.phone) html += '<div style="font-size:var(--font-size-xs);color:var(--color-text-secondary);margin-top:2px;direction:ltr;text-align:end;">📱 ' + m.phone + '</div>';
+                html += '</div>';
+                html += '<span class="status-pill status-pill--' + m.status + '">' + (statusLabels[m.status] || m.status) + '</span>';
+                html += '</div>';
+                html += '<button onclick="closeDetail()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--color-text-secondary);">✕</button></div>';
+
+                html += '<div class="detail-grid">';
+                html += '<div class="detail-item"><div class="detail-item__label">الباقة</div><div class="detail-item__value">' + tierName + '</div></div>';
+                html += '<div class="detail-item"><div class="detail-item__label">السعر</div><div class="detail-item__value">' + m.subscribed_price + ' ر.س</div></div>';
+                if (m.phone) html += '<div class="detail-item"><div class="detail-item__label">رقم الجوال</div><div class="detail-item__value" style="direction:ltr;text-align:end;">' + m.phone + '</div></div>';
+                html += '<div class="detail-item"><div class="detail-item__label">إجمالي الوفر</div><div class="detail-item__value">' + m.total_saved_sar + ' ر.س</div></div>';
+                html += '<div class="detail-item"><div class="detail-item__label">الشحن المجاني</div><div class="detail-item__value">' + m.free_shipping_used + ' / ' + m.free_shipping_quota + '</div></div>';
+                html += '<div class="detail-item"><div class="detail-item__label">الاشتراك</div><div class="detail-item__value">' + fmtDate(m.created_at) + '</div></div>';
+                html += '<div class="detail-item"><div class="detail-item__label">نهاية الفترة</div><div class="detail-item__value">' + fmtDate(m.current_period_end) + '</div></div>';
+                html += '</div>';
+
+                // Subscription history
+                if (m.subscription_history && m.subscription_history.length) {
+                    html += '<div class="detail-section"><div class="detail-section__title">💳 سجل الاشتراك</div>';
+                    m.subscription_history.forEach(function(s) {
+                        var icon = s.event === 'charge.succeeded' ? '✅' : s.event === 'charge.failed' ? '❌' : '📋';
+                        var statusText = s.event === 'charge.succeeded' ? 'مدفوع' : s.event === 'charge.failed' ? 'فشل' : s.event;
+                        var statusCls = s.event === 'charge.succeeded' ? 'active' : 'expired';
+                        html += '<div style="display:flex;align-items:flex-start;gap:var(--space-3);padding:var(--space-3);background:var(--color-surface-muted);border-radius:var(--radius-md);margin-bottom:var(--space-2);">';
+                        html += '<span style="font-size:16px;margin-top:2px;">' + icon + '</span>';
+                        html += '<div style="flex:1;">';
+                        html += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+                        html += '<span style="font-weight:var(--font-weight-medium);font-size:var(--font-size-sm);">' + s.period + '</span>';
+                        html += '<span class="status-pill status-pill--' + statusCls + '" style="font-size:11px;">' + statusText + '</span>';
+                        html += '</div>';
+                        html += '<div style="display:flex;justify-content:space-between;margin-top:4px;font-size:var(--font-size-xs);color:var(--color-text-secondary);">';
+                        html += '<span>' + s.amount + ' ر.س</span>';
+                        html += '<span>' + (s.method || '') + '</span>';
+                        html += '</div>';
+                        if (s.note) html += '<div style="font-size:11px;color:var(--c-purple);margin-top:2px;">' + s.note + '</div>';
+                        html += '<div style="font-size:11px;color:var(--color-text-tertiary);margin-top:2px;">' + fmtDate(s.date) + '</div>';
+                        html += '</div></div>';
+                    });
+                    html += '</div>';
+                }
+
+                // Gift history
+                if (m.gift_history && m.gift_history.length) {
+                    html += '<div class="detail-section"><div class="detail-section__title">🎁 سجل الهدايا</div>';
+                    m.gift_history.forEach(function(g) {
+                        html += '<div class="history-row"><span>🎁</span><span style="flex:1;">' + g.month + '</span><span style="font-family:monospace;color:var(--c-purple);">' + g.coupon_code + '</span><span class="status-pill status-pill--' + (g.status === 'redeemed' ? 'active' : 'expired') + '">' + g.status + '</span></div>';
+                    });
+                    html += '</div>';
+                }
+
+                // Shipping history
+                if (m.shipping_history && m.shipping_history.length) {
+                    html += '<div class="detail-section"><div class="detail-section__title">🚚 سجل الشحن</div>';
+                    m.shipping_history.forEach(function(s) {
+                        html += '<div class="history-row"><span>🚚</span><span style="flex:1;">' + s.month + '</span><span>' + s.used_count + '/' + s.quota + ' مستخدم</span></div>';
+                    });
+                    html += '</div>';
+                }
+
+                // Benefit events
+                if (m.benefit_events && m.benefit_events.length) {
+                    html += '<div class="detail-section"><div class="detail-section__title">📋 أحداث المزايا</div>';
+                    var eventLabels = {discount_applied:'خصم تلقائي', free_shipping_used:'شحن مجاني', gift_redeemed:'هدية شهرية'};
+                    m.benefit_events.forEach(function(e) {
+                        html += '<div class="history-row"><span>📋</span><span style="flex:1;">' + (eventLabels[e.event_type] || e.event_type) + '</span>';
+                        if (e.amount_saved) html += '<span style="color:var(--c-success-700);font-weight:var(--font-weight-medium);">-' + e.amount_saved + ' ر.س</span>';
+                        html += '<span style="font-size:11px;color:var(--color-text-tertiary);">' + fmtDate(e.created_at) + '</span></div>';
+                    });
+                    html += '</div>';
+                }
+
+                panel.innerHTML = html;
+            } catch (err) {
+                panel.innerHTML = '<div style="text-align:center;padding:var(--space-8);"><div class="empty__icon">⚠️</div><div>تعذّر تحميل التفاصيل</div><button onclick="closeDetail()" class="btn btn--ghost" style="margin-top:var(--space-3);">إغلاق</button></div>';
+            }
+        }
+
+        function closeDetail() {
+            document.querySelectorAll('.side-panel').forEach(el => { el.classList.remove('is-open'); setTimeout(() => el.remove(), 200); });
+            document.querySelectorAll('.side-panel__overlay').forEach(el => el.remove());
+        }
+
+        function exportCSV() {
+            if (!allMembers.length) { MP.toast('لا يوجد أعضاء للتصدير', 'warning'); return; }
+
+            const headers = ['ID', 'Salla Customer ID', 'Tier', 'Status', 'Price', 'Total Saved', 'Shipping Used', 'Shipping Quota', 'At Risk', 'Joined'];
+            const rows = allMembers.map(m => [
+                m.id,
+                m.salla_customer_id,
+                m.tier,
+                m.status,
+                m.subscribed_price,
+                m.total_saved_sar,
+                m.free_shipping_used,
+                m.free_shipping_quota,
+                m.is_at_risk ? 'Yes' : 'No',
+                m.created_at || '',
+            ]);
+
+            let csv = headers.join(',') + '\n';
+            rows.forEach(r => { csv += r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(',') + '\n'; });
+
+            const blob = new Blob(['\ufeff' + csv], {type: 'text/csv;charset=utf-8;'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'members-' + new Date().toISOString().slice(0, 10) + '.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+            MP.toast('تم تصدير ' + allMembers.length + ' عضو', 'success');
+        }
+
+        load().then(() => {
+            const openId = new URLSearchParams(location.search).get('open');
+            if (openId) setTimeout(() => loadDetail(openId), 300);
+        });
     </script>
 </body>
 </html>

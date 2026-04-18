@@ -145,5 +145,76 @@
         return lang === 'ar' ? 'حدث خطأ غير متوقع.' : 'Something went wrong.';
     };
 
+    // ----- Reusable Pagination Component ----------------------------------
+    MP.Paginator = function (opts) {
+        const perPage = opts.perPage || 10;
+        let currentPage = 1;
+        let items = [];
+
+        const self = {
+            setItems(arr) { items = arr || []; currentPage = 1; },
+            getPage() {
+                const start = (currentPage - 1) * perPage;
+                return items.slice(start, start + perPage);
+            },
+            totalPages() { return Math.max(1, Math.ceil(items.length / perPage)); },
+            currentPage() { return currentPage; },
+            total() { return items.length; },
+            goTo(p) { currentPage = Math.max(1, Math.min(p, self.totalPages())); },
+
+            render(containerEl) {
+                const total = self.totalPages();
+                if (total <= 1) { containerEl.innerHTML = ''; return; }
+
+                let html = '';
+
+                // Prev button
+                html += `<button class="pg-btn${currentPage === 1 ? ' pg-btn--disabled' : ''}" data-pg="${currentPage - 1}" ${currentPage === 1 ? 'disabled' : ''}>‹</button>`;
+
+                // Page numbers with ellipsis
+                const pages = _pageRange(currentPage, total);
+                pages.forEach(p => {
+                    if (p === '...') {
+                        html += '<span class="pg-dots">…</span>';
+                    } else {
+                        html += `<button class="pg-btn${p === currentPage ? ' pg-btn--active' : ''}" data-pg="${p}">${p}</button>`;
+                    }
+                });
+
+                // Next button
+                html += `<button class="pg-btn${currentPage === total ? ' pg-btn--disabled' : ''}" data-pg="${currentPage + 1}" ${currentPage === total ? 'disabled' : ''}>›</button>`;
+
+                // Info
+                const from = (currentPage - 1) * perPage + 1;
+                const to = Math.min(currentPage * perPage, items.length);
+                html += `<span class="pg-info">${from}–${to} من ${items.length}</span>`;
+
+                containerEl.innerHTML = html;
+                containerEl.querySelectorAll('[data-pg]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const pg = Number(btn.dataset.pg);
+                        if (pg >= 1 && pg <= total) {
+                            self.goTo(pg);
+                            if (opts.onChange) opts.onChange(self.getPage(), self.currentPage());
+                            self.render(containerEl);
+                        }
+                    });
+                });
+            }
+        };
+        return self;
+    };
+
+    function _pageRange(current, total) {
+        if (total <= 7) return Array.from({length: total}, (_, i) => i + 1);
+        const pages = [];
+        pages.push(1);
+        if (current > 3) pages.push('...');
+        for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) pages.push(i);
+        if (current < total - 2) pages.push('...');
+        pages.push(total);
+        return pages;
+    }
+
     window.MP = MP;
 })();

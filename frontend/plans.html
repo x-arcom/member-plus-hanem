@@ -13,7 +13,7 @@
         .plan-card--silver { border-color: var(--c-silver); }
         .plan-card--gold { border-color: var(--c-gold); }
         .plan-card__tier { font-size: var(--font-size-xs); text-transform: uppercase; letter-spacing: 0.12em; font-weight: var(--font-weight-bold); margin-bottom: var(--space-2); }
-        .plan-card--silver .plan-card__tier { color: #303f9f; }
+        .plan-card--silver .plan-card__tier { color: #6B6560; }
         .plan-card--gold .plan-card__tier { color: var(--c-gold); }
         .plan-card__name { font-family: var(--font-display); font-size: var(--font-size-lg); font-weight: 600; margin-bottom: var(--space-3); }
         .plan-card__price { font-family: var(--font-display); font-size: var(--font-size-2xl); font-weight: 700; color: var(--c-purple); }
@@ -27,8 +27,8 @@
         .benefit-row__title { font-weight: var(--font-weight-bold); font-size: var(--font-size-sm); }
         .benefit-row__desc { font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-top: 2px; }
         .benefit-row__tiers { display: flex; gap: var(--space-1); margin-top: var(--space-1); }
-        .tp { font-size: 9px; padding: 1px 5px; border-radius: var(--radius-pill); font-weight: var(--font-weight-bold); }
-        .tp-s { background: #e8eaf6; color: #303f9f; }
+        .tp { font-size: 11px; padding: 1px 5px; border-radius: var(--radius-pill); font-weight: var(--font-weight-bold); }
+        .tp-s { background: #e8eaf6; color: #6B6560; }
         .tp-g { background: #fff8e1; color: var(--c-gold); }
         .quota-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-top: var(--space-3); width: 100%; }
         .quota-box { background: var(--color-surface-muted); border-radius: var(--radius-md); padding: var(--space-3); text-align: center; }
@@ -43,6 +43,11 @@
         .mgmt-card__desc { font-size: var(--font-size-xs); color: var(--color-text-secondary); }
         .mgmt-card__arrow { margin-inline-start: auto; color: var(--color-text-secondary); }
         .disclaimer { background: var(--c-warning-50); border: 1px solid var(--c-gold); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); font-size: var(--font-size-xs); margin-bottom: var(--space-5); line-height: 1.7; color: var(--color-text-secondary); }
+
+        /* Toggle switch */
+        .benefit-row label input:checked + span { background: var(--c-purple) !important; }
+        .benefit-row label input:checked ~ .toggle-knob { transform: translateX(-20px); }
+        [dir="ltr"] .benefit-row label input:checked ~ .toggle-knob { transform: translateX(20px); }
     </style>
 </head>
 <body>
@@ -54,18 +59,19 @@
                 <div class="sidebar__trial" id="trial-line">—</div>
             </div>
             <nav class="sidebar__nav">
-                <a class="sidebar__link" href="dashboard.html"><span class="icon">📊</span> لوحة التحكم</a>
-                <a class="sidebar__link" href="plans.html" aria-current="page"><span class="icon">🏷️</span> إعدادات العضوية</a>
-                <a class="sidebar__link" href="promotions.html"><span class="icon">🎁</span> الهدايا والعروض</a>
-                <a class="sidebar__link" href="members.html"><span class="icon">👥</span> الأعضاء</a>
-                <a class="sidebar__link" href="settings.html"><span class="icon">⚙️</span> الإعدادات</a>
+                <a class="sidebar__link" href="dashboard.html"><span class="icon" aria-hidden="true">📊</span> لوحة التحكم</a>
+                <a class="sidebar__link" href="plans.html" aria-current="page"><span class="icon" aria-hidden="true">🏷️</span> إعدادات العضوية</a>
+                <a class="sidebar__link" href="promotions.html"><span class="icon" aria-hidden="true">🎁</span> الهدية الشهرية</a>
+                <a class="sidebar__link" href="members.html"><span class="icon" aria-hidden="true">👥</span> الأعضاء</a>
+                <a class="sidebar__link" href="activity.html"><span class="icon" aria-hidden="true">📋</span> سجل النشاط</a>
+                <a class="sidebar__link" href="settings.html"><span class="icon" aria-hidden="true">⚙️</span> الإعدادات</a>
             </nav>
-            <div class="sidebar__footer"><button class="sidebar__link" id="logout-btn" type="button"><span class="icon">⎋</span> تسجيل خروج</button></div>
+            <div class="sidebar__footer"><button class="sidebar__link" id="logout-btn" type="button"><span class="icon" aria-hidden="true">⎋</span> تسجيل خروج</button></div>
         </aside>
         <div class="sidebar__overlay" id="sidebar-overlay"></div>
         <div class="app-main">
             <header class="app-topbar">
-                <div style="display:flex;align-items:center;gap:var(--space-3);"><button class="sidebar__toggle" id="sidebar-toggle" type="button">☰</button><span class="app-topbar__title">إعدادات العضوية</span></div>
+                <div style="display:flex;align-items:center;gap:var(--space-3);"><button class="sidebar__toggle" id="sidebar-toggle" type="button" aria-label="فتح القائمة">☰</button><span class="app-topbar__title">إعدادات العضوية</span></div>
             </header>
             <main class="container">
                 <div id="state-loading"><div class="skeleton skeleton--block" style="height:180px;margin-bottom:var(--space-4)"></div><div class="skeleton skeleton--block" style="height:300px"></div></div>
@@ -81,6 +87,8 @@
         let plansData = [];
         let sq = { silver: 2, gold: 4 };
         let sqOrig = { silver: 2, gold: 4 };
+        let disc = { silver: 10, gold: 25 };
+        let discOrig = { silver: 10, gold: 25 };
 
         document.getElementById('sidebar-toggle').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('is-open'));
         document.getElementById('sidebar-overlay').addEventListener('click', () => document.getElementById('sidebar').classList.remove('is-open'));
@@ -111,85 +119,168 @@
             let h = '';
 
             // ── الباقات ──
-            h += '<div class="section-title">الباقات <a class="btn btn--ghost" href="wizard.html?token=' + token + '" style="font-size:var(--font-size-sm);">✏️ تعديل</a></div>';
+            h += '<div class="section-title">الباقات</div>';
             h += '<div class="disclaimer">التغييرات تُطبَّق على العملاء الجدد فقط. العملاء الحاليون يستمرون على إعداداتهم الحالية.</div>';
             h += '<div class="plans-row">';
             plansData.forEach(p => {
                 h += '<div class="plan-card plan-card--' + p.tier + '">'
-                    + '<div class="plan-card__tier">' + p.tier.toUpperCase() + '</div>'
-                    + '<div class="plan-card__name">' + p.display_name_ar + ' / ' + p.display_name_en + '</div>'
-                    + '<div class="plan-card__price">' + p.price + ' <small>SAR/شهر</small></div>'
-                    + '<div class="plan-card__detail">'
-                    + '<div><div class="plan-card__stat-label">الخصم</div><div class="plan-card__stat-value">' + p.discount_pct + '%</div></div>'
-                    + '<div><div class="plan-card__stat-label">الشحن</div><div class="plan-card__stat-value">' + p.free_shipping_uses + '/شهر</div></div>'
-                    + '</div></div>';
+                    + '<div class="plan-card__tier">' + (p.tier === 'gold' ? 'الذهبية' : 'الفضية') + '</div>'
+                    + '<div class="plan-card__name">' + p.display_name_ar + '</div>'
+                    + '<div class="plan-card__price">' + p.price + ' <small>ر.س/شهر</small></div>'
+                    + '</div>';
             });
             h += '</div>';
 
-            // ── المزايا ──
-            h += '<div class="section-title">المزايا</div>';
+            // ── الخصم والشحن — per-tier cards ──
+            const sp = plansData.find(p => p.tier === 'silver');
+            const gp = plansData.find(p => p.tier === 'gold');
+            const sd = sp ? parseFloat(sp.discount_pct) : 10;
+            const gd = gp ? parseFloat(gp.discount_pct) : 25;
+            disc = {silver: sd, gold: gd};
 
-            // Auto benefits
-            [
-                ['🏷️', 'الخصم التلقائي', 'يُطبَّق تلقائياً عند الدفع', true],
-                ['💎', 'سعر الأعضاء', 'سعر خاص على منتجات محددة', true],
-                ['⭐', 'شارة العضوية', 'شارة مرئية تعرّف العميل كعضو', true],
-                ['⚡', 'الوصول المبكر', 'منتجات حصرية قبل الإطلاق', false],
-            ].forEach(([icon, title, desc, both]) => {
-                h += '<div class="benefit-row"><div class="benefit-row__icon">' + icon + '</div><div class="benefit-row__info"><div class="benefit-row__title">' + title + '</div><div class="benefit-row__desc">' + desc + '</div><div class="benefit-row__tiers">' + (both ? '<span class="tp tp-s">S</span><span class="tp tp-g">G</span>' : '<span class="tp tp-g">G</span>') + '</div></div><div style="font-size:var(--font-size-xs);color:var(--c-success-700);">تلقائي ✓</div></div>';
+            h += '<div class="section-title">الخصم والشحن</div>';
+            h += '<div class="disclaimer">كل باقة لها إعداداتها المستقلة. التعديل على باقة لا يؤثر على الأخرى.</div>';
+            h += '<div class="plans-row">';
+
+            // Per-tier config cards
+            [{tier:'silver', label:'الفضية', cls:'tp-s', disc:disc.silver, ship:sq.silver},
+             {tier:'gold', label:'الذهبية', cls:'tp-g', disc:disc.gold, ship:sq.gold}].forEach(t => {
+                h += '<div class="plan-card plan-card--' + t.tier + '" style="padding:var(--space-5);">'
+                    + '<div class="plan-card__tier">' + t.label + '</div>';
+
+                // Discount — read-only
+                h += '<div style="margin-top:var(--space-4);padding:var(--space-3);background:var(--color-surface-muted);border-radius:var(--radius-md);">'
+                    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-2);">'
+                    + '<span style="font-size:var(--font-size-sm);font-weight:var(--font-weight-medium);">🏷️ الخصم</span>'
+                    + '<button class="btn btn--ghost edit-tier-disc" data-tier="' + t.tier + '" style="font-size:var(--font-size-xs);padding:2px 10px;">✏️</button>'
+                    + '</div>'
+                    + '<div class="disc-display-' + t.tier + '"><span style="font-family:var(--font-display);font-size:var(--font-size-xl);font-weight:700;color:var(--c-purple);">' + t.disc + '%</span><div style="font-size:var(--font-size-xs);color:var(--color-text-secondary);margin-top:2px;">على جميع الطلبات</div></div>'
+                    + '<div class="disc-form-' + t.tier + '" style="display:none;">'
+                    + '<div style="margin-bottom:var(--space-2);"><label style="font-size:var(--font-size-xs);color:var(--color-text-secondary);">النسبة (%)</label><input type="number" class="input disc-pct" data-tier="' + t.tier + '" min="0" max="100" value="' + t.disc + '" style="margin-top:4px;"></div>'
+                    + '<div style="margin-bottom:var(--space-2);"><label style="font-size:var(--font-size-xs);color:var(--color-text-secondary);">يُطبّق على</label><select class="input disc-scope" data-tier="' + t.tier + '" style="margin-top:4px;"><option value="all">جميع الطلبات</option><option value="limited">عدد محدود/شهر</option></select></div>'
+                    + '<div class="disc-limit-' + t.tier + '" style="display:none;margin-bottom:var(--space-2);"><label style="font-size:var(--font-size-xs);color:var(--color-text-secondary);">عدد الطلبات/شهر</label><input type="number" class="input disc-limit-inp" data-tier="' + t.tier + '" min="1" value="5" style="margin-top:4px;"></div>'
+                    + '<div style="display:flex;gap:var(--space-2);"><button class="btn btn--primary save-tier-disc" data-tier="' + t.tier + '" style="flex:1;font-size:var(--font-size-xs);">حفظ</button><button class="btn btn--ghost cancel-tier-disc" data-tier="' + t.tier + '" style="font-size:var(--font-size-xs);">إلغاء</button></div>'
+                    + '</div>'
+                    + '</div>';
+
+                // Shipping — read-only
+                h += '<div style="margin-top:var(--space-3);padding:var(--space-3);background:var(--color-surface-muted);border-radius:var(--radius-md);">'
+                    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-2);">'
+                    + '<span style="font-size:var(--font-size-sm);font-weight:var(--font-weight-medium);">🚚 الشحن المجاني</span>'
+                    + '<button class="btn btn--ghost edit-tier-ship" data-tier="' + t.tier + '" style="font-size:var(--font-size-xs);padding:2px 10px;">✏️</button>'
+                    + '</div>'
+                    + '<div class="ship-display-' + t.tier + '"><span style="font-family:var(--font-display);font-size:var(--font-size-xl);font-weight:700;color:var(--c-purple);">' + t.ship + '</span><span style="font-size:var(--font-size-sm);color:var(--color-text-secondary);"> مرات/شهر</span></div>'
+                    + '<div class="ship-form-' + t.tier + '" style="display:none;">'
+                    + '<div style="margin-bottom:var(--space-2);"><label style="font-size:var(--font-size-xs);color:var(--color-text-secondary);">عدد المرات/شهر</label><input type="number" class="input ship-qty" data-tier="' + t.tier + '" min="0" value="' + t.ship + '" style="margin-top:4px;"></div>'
+                    + '<div style="display:flex;gap:var(--space-2);"><button class="btn btn--primary save-tier-ship" data-tier="' + t.tier + '" style="flex:1;font-size:var(--font-size-xs);">حفظ</button><button class="btn btn--ghost cancel-tier-ship" data-tier="' + t.tier + '" style="font-size:var(--font-size-xs);">إلغاء</button></div>'
+                    + '</div>'
+                    + '</div>';
+
+                h += '</div>';
             });
+            h += '</div>';
 
-            // Shipping — inline edit
-            h += '<div class="benefit-row" style="flex-wrap:wrap;">'
-                + '<div class="benefit-row__icon">🚚</div>'
-                + '<div class="benefit-row__info"><div class="benefit-row__title">الشحن المجاني</div><div class="benefit-row__desc">كوبون شحن شهري بعدد محدود</div><div class="benefit-row__tiers"><span class="tp tp-s">S</span><span class="tp tp-g">G</span></div></div>'
-                + '<button class="btn btn--ghost" id="edit-ship" style="font-size:var(--font-size-xs);padding:2px 10px;">✏️</button>'
-                + '<div class="quota-row">'
-                + '<div class="quota-box"><span class="tp tp-s">SILVER</span><div class="quota-box__value" id="sv">' + sq.silver + '</div><input type="number" class="input" min="0" value="' + sq.silver + '" data-tier="silver" hidden style="max-width:70px;"><div style="font-size:var(--font-size-xs);color:var(--color-text-secondary);margin-top:2px;">مرات/شهر</div></div>'
-                + '<div class="quota-box"><span class="tp tp-g">GOLD</span><div class="quota-box__value" id="gv">' + sq.gold + '</div><input type="number" class="input" min="0" value="' + sq.gold + '" data-tier="gold" hidden style="max-width:70px;"><div style="font-size:var(--font-size-xs);color:var(--color-text-secondary);margin-top:2px;">مرات/شهر</div></div>'
-                + '</div>'
-                + '<button class="btn btn--primary" id="save-ship" hidden style="width:100%;margin-top:var(--space-3);">حفظ</button>'
-                + '</div>';
-
-            // Gift
-
-            // ── إدارة ──
-            h += '<div class="section-title" style="margin-top:var(--space-6);">إدارة</div>';
-            h += '<div class="mgmt-cards">'
-                + '</div>';
+            // ── المزايا — reordered: badge, gift, member price, early access ──
+            h += '<div class="section-title">المزايا</div>';
+            const features = [
+                {id:'badge', icon:'⭐', name:'شارة العضوية', desc:'شارة مرئية تعرّف العميل كعضو', both:true, auto:true},
+                {id:'gift', icon:'🎁', name:'الهدية الشهرية', desc:'كوبون حصري شهري — استخدام واحد', both:false, defaultOn:true, link:'promotions'},
+                {id:'memberprice', icon:'💎', name:'خصم الأعضاء', desc:'سعر خاص على منتجات محددة', both:true, defaultOn:true},
+                {id:'early', icon:'⚡', name:'الوصول للمنتجات', desc:'منتجات حصرية قبل الإطلاق', both:false, defaultOn:true},
+            ];
+            features.forEach(f => {
+                const tiers = f.both ? '<span class="tp tp-s">ف</span><span class="tp tp-g">ذ</span>' : '<span class="tp tp-g">ذ</span>';
+                h += '<div class="benefit-row">'
+                    + '<div class="benefit-row__icon">' + f.icon + '</div>'
+                    + '<div class="benefit-row__info"><div class="benefit-row__title">' + f.name + '</div><div class="benefit-row__desc">' + f.desc + '</div><div class="benefit-row__tiers">' + tiers + '</div></div>'
+                    + '<div style="display:flex;align-items:center;gap:var(--space-3);">'
+                    + (f.link ? '<a class="btn btn--ghost" href="' + f.link + '.html?token=' + token + '" style="font-size:var(--font-size-xs);padding:4px 12px;">إدارة →</a>' : '')
+                    + (f.auto ? '<span style="font-size:var(--font-size-xs);color:var(--c-success-700);">تلقائي ✓</span>' : '<label style="position:relative;width:44px;height:24px;flex-shrink:0;cursor:pointer;"><input type="checkbox" id="plan-feat-' + f.id + '" ' + (f.defaultOn ? 'checked' : '') + ' style="opacity:0;width:0;height:0;position:absolute;"><span style="position:absolute;inset:0;background:var(--color-border);border-radius:var(--radius-pill);transition:background var(--motion-fast);cursor:pointer;"></span><span class="toggle-knob" style="position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;top:3px;inset-inline-start:3px;transition:transform var(--motion-fast);box-shadow:0 1px 3px rgba(0,0,0,0.2);pointer-events:none;"></span></label>')
+                    + '</div></div>';
+            });
 
             document.getElementById('state-data').innerHTML = h;
 
-            // Shipping edit/save
-            const editBtn = document.getElementById('edit-ship');
-            const saveBtn = document.getElementById('save-ship');
-            const sv = document.getElementById('sv');
-            const gv = document.getElementById('gv');
-            const inputs = document.querySelectorAll('[data-tier]');
-
-            editBtn.addEventListener('click', () => {
-                inputs.forEach(i => { i.hidden = false; });
-                sv.hidden = true; gv.hidden = true;
-                editBtn.hidden = true;
-                sqOrig = { ...sq };
+            // ── Wire per-tier Discount edit/save/cancel ──
+            document.querySelectorAll('.edit-tier-disc').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const t = btn.dataset.tier;
+                    document.querySelector('.disc-display-' + t).style.display = 'none';
+                    document.querySelector('.disc-form-' + t).style.display = 'block';
+                    btn.style.display = 'none';
+                });
             });
-
-            inputs.forEach(i => {
-                i.addEventListener('input', () => {
-                    const s = Number(document.querySelector('[data-tier="silver"]').value) || 0;
-                    const g = Number(document.querySelector('[data-tier="gold"]').value) || 0;
-                    saveBtn.hidden = (s === sqOrig.silver && g === sqOrig.gold);
+            document.querySelectorAll('.disc-scope').forEach(sel => {
+                sel.addEventListener('change', () => {
+                    const t = sel.dataset.tier;
+                    document.querySelector('.disc-limit-' + t).style.display = sel.value === 'limited' ? 'block' : 'none';
+                });
+            });
+            document.querySelectorAll('.save-tier-disc').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const t = btn.dataset.tier;
+                    const val = Math.max(0, Number(document.querySelector('.disc-pct[data-tier="' + t + '"]').value) || 0);
+                    const scope = document.querySelector('.disc-scope[data-tier="' + t + '"]').value;
+                    const limitVal = document.querySelector('.disc-limit-inp[data-tier="' + t + '"]')?.value || '';
+                    disc[t] = val;
+                    const scopeText = scope === 'limited' ? 'على ' + limitVal + ' طلبات/شهر' : 'على جميع الطلبات';
+                    document.querySelector('.disc-display-' + t).innerHTML = '<span style="font-family:var(--font-display);font-size:var(--font-size-xl);font-weight:700;color:var(--c-purple);">' + val + '%</span><div style="font-size:var(--font-size-xs);color:var(--color-text-secondary);margin-top:2px;">' + scopeText + '</div>';
+                    document.querySelector('.disc-display-' + t).style.display = '';
+                    document.querySelector('.disc-form-' + t).style.display = 'none';
+                    document.querySelector('.edit-tier-disc[data-tier="' + t + '"]').style.display = '';
+                    MP.toast('تم حفظ خصم ' + (t === 'gold' ? 'الذهبية' : 'الفضية'), 'success');
+                });
+            });
+            document.querySelectorAll('.cancel-tier-disc').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const t = btn.dataset.tier;
+                    document.querySelector('.disc-display-' + t).style.display = '';
+                    document.querySelector('.disc-form-' + t).style.display = 'none';
+                    document.querySelector('.edit-tier-disc[data-tier="' + t + '"]').style.display = '';
                 });
             });
 
-            saveBtn.addEventListener('click', () => {
-                inputs.forEach(i => { sq[i.dataset.tier] = Math.max(0, Number(i.value) || 0); i.hidden = true; });
-                sv.textContent = sq.silver; sv.hidden = false;
-                gv.textContent = sq.gold; gv.hidden = false;
-                saveBtn.hidden = true; editBtn.hidden = false;
-                MP.toast('تم الحفظ — الفضية: ' + sq.silver + ' · الذهبية: ' + sq.gold, 'success');
+            // ── Wire per-tier Shipping edit/save/cancel ──
+            document.querySelectorAll('.edit-tier-ship').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const t = btn.dataset.tier;
+                    document.querySelector('.ship-display-' + t).style.display = 'none';
+                    document.querySelector('.ship-form-' + t).style.display = 'block';
+                    btn.style.display = 'none';
+                });
+            });
+            document.querySelectorAll('.save-tier-ship').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const t = btn.dataset.tier;
+                    const val = Math.max(0, Number(document.querySelector('.ship-qty[data-tier="' + t + '"]').value) || 0);
+                    sq[t] = val;
+                    document.querySelector('.ship-display-' + t).innerHTML = '<span style="font-family:var(--font-display);font-size:var(--font-size-xl);font-weight:700;color:var(--c-purple);">' + val + '</span><span style="font-size:var(--font-size-sm);color:var(--color-text-secondary);"> مرات/شهر</span>';
+                    document.querySelector('.ship-display-' + t).style.display = '';
+                    document.querySelector('.ship-form-' + t).style.display = 'none';
+                    document.querySelector('.edit-tier-ship[data-tier="' + t + '"]').style.display = '';
+                    MP.toast('تم حفظ شحن ' + (t === 'gold' ? 'الذهبية' : 'الفضية'), 'success');
+                });
+            });
+            document.querySelectorAll('.cancel-tier-ship').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const t = btn.dataset.tier;
+                    document.querySelector('.ship-display-' + t).style.display = '';
+                    document.querySelector('.ship-form-' + t).style.display = 'none';
+                    document.querySelector('.edit-tier-ship[data-tier="' + t + '"]').style.display = '';
+                });
+            });
+
+            // ── Wire feature toggles ──
+            document.querySelectorAll('[id^="plan-feat-"]').forEach(toggle => {
+                toggle.addEventListener('change', () => {
+                    const name = toggle.closest('.benefit-row').querySelector('.benefit-row__title').textContent;
+                    MP.toast(toggle.checked ? 'تم تفعيل ' + name : 'تم تعطيل ' + name, toggle.checked ? 'success' : 'warning');
+                });
             });
         }
+
+
+
 
         load();
     </script>

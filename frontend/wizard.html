@@ -35,6 +35,21 @@
         .tier-summary li::before { content: '◆'; margin-inline-end: var(--space-2); color: var(--c-purple); font-size: 8px; }
         .checkbox-row { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
         .checkbox-row input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--c-purple); }
+
+        .feature-toggles { margin-top: var(--space-5); border-top: 1px solid var(--color-border); padding-top: var(--space-4); }
+        .feature-toggles__title { font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-bottom: var(--space-3); color: var(--color-text-secondary); }
+        .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: var(--space-3) 0; border-bottom: 1px solid var(--color-border); }
+        .toggle-row:last-child { border-bottom: none; }
+        .toggle-row__info { flex: 1; }
+        .toggle-row__name { font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); }
+        .toggle-row__desc { font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-top: 2px; }
+        .toggle-switch { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-switch__track { position: absolute; inset: 0; background: var(--color-border); border-radius: var(--radius-pill); cursor: pointer; transition: background var(--motion-fast); }
+        .toggle-switch__track::after { content: ''; position: absolute; width: 18px; height: 18px; border-radius: 50%; background: #fff; top: 3px; inset-inline-start: 3px; transition: transform var(--motion-fast); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        .toggle-switch input:checked + .toggle-switch__track { background: var(--c-purple); }
+        .toggle-switch input:checked + .toggle-switch__track::after { transform: translateX(-20px); }
+        [dir="ltr"] .toggle-switch input:checked + .toggle-switch__track::after { transform: translateX(20px); }
         .consent-box { background: var(--color-surface-muted); border-radius: var(--radius-md); padding: var(--space-4); margin-top: var(--space-4); }
         .consent-box label { display: flex; align-items: flex-start; gap: var(--space-3); font-size: var(--font-size-sm); cursor: pointer; margin-bottom: var(--space-3); }
     </style>
@@ -73,9 +88,9 @@
                     <p style="color:var(--color-text-secondary);" id="welcome-store-name"></p>
                 </div>
                 <ul class="welcome-checklist">
-                    <li>إعداد أسماء وأسعار الباقتين (الفضية والذهبية)</li>
-                    <li>تحديد نسب الخصم والشحن المجاني لكل باقة</li>
-                    <li>تفعيل المزايا الإضافية للباقة الذهبية</li>
+                    <li>تحديد السعر ودورة الفوترة لكل باقة</li>
+                    <li>ضبط نسبة الخصم ونطاق تطبيقه</li>
+                    <li>تحديد عدد مرات الشحن المجاني الشهري</li>
                 </ul>
                 <p style="text-align:center; color:var(--color-text-secondary); font-size:var(--font-size-sm); margin-top:var(--space-4);">
                     ⏱️ الوقت المتوقع: 5 دقائق · يمكنك تعديل كل شيء لاحقاً من لوحة التحكم
@@ -91,16 +106,46 @@
                 <p style="color:var(--color-text-secondary); margin-bottom:var(--space-4);">
                     الباقة الأساسية — خصم تلقائي + شحن مجاني + شارة عضوية.
                 </p>
+                <input id="s-name-ar" type="hidden" value="الباقة الفضية">
+                <input id="s-name-en" type="hidden" value="Silver">
                 <div class="row">
-                    <div class="field"><label for="s-name-ar">الاسم (عربي)</label><input id="s-name-ar" class="input" value="الباقة الفضية"></div>
-                    <div class="field"><label for="s-name-en">Name (EN)</label><input id="s-name-en" class="input" value="Silver"></div>
+                    <div class="field"><label for="s-price">السعر (ر.س)</label><input id="s-price" class="input" type="number" step="0.01" min="0" value="49"></div>
+                    <div class="field"><label for="s-cycle">دورة الفوترة</label><select id="s-cycle" class="input"><option value="monthly" selected>شهري</option><option value="yearly">سنوي</option></select></div>
                 </div>
                 <div class="row">
-                    <div class="field"><label for="s-price">السعر الشهري (SAR)</label><input id="s-price" class="input" type="number" step="0.01" min="0" value="49"></div>
                     <div class="field"><label for="s-discount">نسبة الخصم (%)</label><input id="s-discount" class="input" type="number" step="1" min="0" max="100" value="10"></div>
+                    <div class="field"><label for="s-discount-scope">يُطبّق على</label><select id="s-discount-scope" class="input"><option value="all" selected>جميع الطلبات</option><option value="limited">عدد محدود/شهر</option></select></div>
                 </div>
-                <div class="field"><label for="s-shipping">شحن مجاني (مرّات/شهر)</label><input id="s-shipping" class="input" type="number" min="0" value="2"></div>
-                <p class="alert alert--info" style="margin-top:var(--space-4);">الباقة الفضية تتضمن: خصم تلقائي + شحن مجاني + شارة عضوية. الهدية الشهرية والوصول المبكر متاحة فقط في الذهبية.</p>
+                <div class="field" id="s-discount-limit-wrap" style="display:none;"><label for="s-discount-limit">عدد الطلبات المخصومة/شهر</label><input id="s-discount-limit" class="input" type="number" min="1" value="5"></div>
+                <div class="feature-toggles">
+                    <div class="feature-toggles__title">المزايا</div>
+                    <div class="toggle-row">
+                        <div class="toggle-row__info"><div class="toggle-row__name">🏷️ الخصم التلقائي</div><div class="toggle-row__desc">خصم تلقائي على الطلبات</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="s-feat-discount" checked><span class="toggle-switch__track"></span></label>
+                    </div>
+                    <div class="toggle-row" id="s-shipping-row">
+                        <div class="toggle-row__info"><div class="toggle-row__name">🚚 الشحن المجاني</div><div class="toggle-row__desc">كوبون شحن شهري</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="s-feat-shipping" checked><span class="toggle-switch__track"></span></label>
+                    </div>
+                    <div class="field" id="s-shipping-wrap" style="margin-top:var(--space-2);margin-bottom:0;"><label for="s-shipping">عدد مرات الشحن/شهر</label><input id="s-shipping" class="input" type="number" min="0" value="2"></div>
+                    <div class="toggle-row">
+                        <div class="toggle-row__info"><div class="toggle-row__name">💎 سعر الأعضاء</div><div class="toggle-row__desc">سعر خاص على منتجات محددة</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="s-feat-memberprice" checked><span class="toggle-switch__track"></span></label>
+                    </div>
+                    <div class="toggle-row">
+                        <div class="toggle-row__info"><div class="toggle-row__name">⭐ شارة العضوية</div><div class="toggle-row__desc">شارة مرئية تعرّف العميل كعضو</div></div>
+                        <span style="font-size:var(--font-size-xs);color:var(--c-success-700);">تلقائي ✓</span>
+                    </div>
+                    <input type="hidden" id="s-feat-badge" value="on">
+                    <div class="toggle-row">
+                        <div class="toggle-row__info"><div class="toggle-row__name">🎁 الهدية الشهرية</div><div class="toggle-row__desc">كوبون حصري شهري</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="s-feat-gift"><span class="toggle-switch__track"></span></label>
+                    </div>
+                    <div class="toggle-row">
+                        <div class="toggle-row__info"><div class="toggle-row__name">⚡ الوصول المبكر</div><div class="toggle-row__desc">منتجات حصرية قبل الإطلاق</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="s-feat-early"><span class="toggle-switch__track"></span></label>
+                    </div>
+                </div>
             </section>
 
             <!-- Step 2: Gold -->
@@ -112,17 +157,46 @@
                 <p style="color:var(--color-text-secondary); margin-bottom:var(--space-4);">
                     الباقة المميزة — كل مزايا الفضية + هدية شهرية + وصول مبكر.
                 </p>
+                <input id="g-name-ar" type="hidden" value="الباقة الذهبية">
+                <input id="g-name-en" type="hidden" value="Gold">
                 <div class="row">
-                    <div class="field"><label for="g-name-ar">الاسم (عربي)</label><input id="g-name-ar" class="input" value="الباقة الذهبية"></div>
-                    <div class="field"><label for="g-name-en">Name (EN)</label><input id="g-name-en" class="input" value="Gold"></div>
+                    <div class="field"><label for="g-price">السعر (ر.س)</label><input id="g-price" class="input" type="number" step="0.01" min="0" value="99"></div>
+                    <div class="field"><label for="g-cycle">دورة الفوترة</label><select id="g-cycle" class="input"><option value="monthly" selected>شهري</option><option value="yearly">سنوي</option></select></div>
                 </div>
                 <div class="row">
-                    <div class="field"><label for="g-price">السعر الشهري (SAR)</label><input id="g-price" class="input" type="number" step="0.01" min="0" value="99"></div>
                     <div class="field"><label for="g-discount">نسبة الخصم (%)</label><input id="g-discount" class="input" type="number" step="1" min="0" max="100" value="25"></div>
+                    <div class="field"><label for="g-discount-scope">يُطبّق على</label><select id="g-discount-scope" class="input"><option value="all" selected>جميع الطلبات</option><option value="limited">عدد محدود/شهر</option></select></div>
                 </div>
-                <div class="field"><label for="g-shipping">شحن مجاني (مرّات/شهر)</label><input id="g-shipping" class="input" type="number" min="0" value="5"></div>
-                <label class="checkbox-row" style="margin-top:var(--space-4);"><input type="checkbox" id="g-gift" checked><span>هدية شهرية</span></label>
-                <label class="checkbox-row"><input type="checkbox" id="g-early" checked><span>وصول مبكر للعروض</span></label>
+                <div class="field" id="g-discount-limit-wrap" style="display:none;"><label for="g-discount-limit">عدد الطلبات المخصومة/شهر</label><input id="g-discount-limit" class="input" type="number" min="1" value="10"></div>
+                <div class="feature-toggles">
+                    <div class="feature-toggles__title">المزايا</div>
+                    <div class="toggle-row">
+                        <div class="toggle-row__info"><div class="toggle-row__name">🏷️ الخصم التلقائي</div><div class="toggle-row__desc">خصم تلقائي على الطلبات</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="g-feat-discount" checked><span class="toggle-switch__track"></span></label>
+                    </div>
+                    <div class="toggle-row" id="g-shipping-row">
+                        <div class="toggle-row__info"><div class="toggle-row__name">🚚 الشحن المجاني</div><div class="toggle-row__desc">كوبون شحن شهري</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="g-feat-shipping" checked><span class="toggle-switch__track"></span></label>
+                    </div>
+                    <div class="field" id="g-shipping-wrap" style="margin-top:var(--space-2);margin-bottom:0;"><label for="g-shipping">عدد مرات الشحن/شهر</label><input id="g-shipping" class="input" type="number" min="0" value="5"></div>
+                    <div class="toggle-row">
+                        <div class="toggle-row__info"><div class="toggle-row__name">💎 سعر الأعضاء</div><div class="toggle-row__desc">سعر خاص على منتجات محددة</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="g-feat-memberprice" checked><span class="toggle-switch__track"></span></label>
+                    </div>
+                    <div class="toggle-row">
+                        <div class="toggle-row__info"><div class="toggle-row__name">⭐ شارة العضوية</div><div class="toggle-row__desc">شارة مرئية تعرّف العميل كعضو</div></div>
+                        <span style="font-size:var(--font-size-xs);color:var(--c-success-700);">تلقائي ✓</span>
+                    </div>
+                    <input type="hidden" id="g-feat-badge" value="on">
+                    <div class="toggle-row">
+                        <div class="toggle-row__info"><div class="toggle-row__name">🎁 الهدية الشهرية</div><div class="toggle-row__desc">كوبون حصري شهري — استخدام واحد</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="g-gift" checked><span class="toggle-switch__track"></span></label>
+                    </div>
+                    <div class="toggle-row">
+                        <div class="toggle-row__info"><div class="toggle-row__name">⚡ الوصول المبكر</div><div class="toggle-row__desc">منتجات حصرية قبل الإطلاق</div></div>
+                        <label class="toggle-switch"><input type="checkbox" id="g-early" checked><span class="toggle-switch__track"></span></label>
+                    </div>
+                </div>
             </section>
 
             <!-- Step 3: Review + Consent (PRD §43.4 Step 4) -->
@@ -178,9 +252,12 @@
                 price: document.getElementById('s-price').value,
                 discount_percent: document.getElementById('s-discount').value,
                 free_shipping_quota: Number(document.getElementById('s-shipping').value),
-                monthly_gift_enabled: false,
-                early_access_enabled: false,
+                discount_enabled: document.getElementById('s-feat-discount').checked,
+                shipping_enabled: document.getElementById('s-feat-shipping').checked,
+                member_price_enabled: document.getElementById('s-feat-memberprice').checked,
                 badge_enabled: true,
+                monthly_gift_enabled: document.getElementById('s-feat-gift').checked,
+                early_access_enabled: document.getElementById('s-feat-early').checked,
             };
         }
 
@@ -191,9 +268,12 @@
                 price: document.getElementById('g-price').value,
                 discount_percent: document.getElementById('g-discount').value,
                 free_shipping_quota: Number(document.getElementById('g-shipping').value),
+                discount_enabled: document.getElementById('g-feat-discount').checked,
+                shipping_enabled: document.getElementById('g-feat-shipping').checked,
+                member_price_enabled: document.getElementById('g-feat-memberprice').checked,
+                badge_enabled: true,
                 monthly_gift_enabled: document.getElementById('g-gift').checked,
                 early_access_enabled: document.getElementById('g-early').checked,
-                badge_enabled: true,
             };
         }
 
@@ -202,11 +282,12 @@
              {data: readGold(), id: 'gold-review', label: 'الباقة الذهبية', badge: 'gold'}].forEach(({data, id, label, badge}) => {
                 const items = [];
                 items.push('السعر: ' + (data.price || '0') + ' ر.س/شهر');
-                items.push('خصم: ' + (data.discount_percent || '0') + '%');
-                if (data.free_shipping_quota > 0) items.push('شحن مجاني: ' + data.free_shipping_quota + '/شهر');
-                items.push('شارة عضوية ✓');
-                if (data.monthly_gift_enabled) items.push('هدية شهرية ✓');
-                if (data.early_access_enabled) items.push('وصول مبكر ✓');
+                items.push(data.discount_enabled ? 'خصم: ' + (data.discount_percent || '0') + '% ✓' : 'الخصم التلقائي ✗');
+                items.push(data.shipping_enabled ? 'شحن مجاني: ' + data.free_shipping_quota + '/شهر ✓' : 'الشحن المجاني ✗');
+                items.push(data.member_price_enabled ? 'سعر الأعضاء ✓' : 'سعر الأعضاء ✗');
+                items.push('شارة العضوية ✓ (تلقائي)');
+                items.push(data.monthly_gift_enabled ? 'هدية شهرية ✓' : 'هدية شهرية ✗');
+                items.push(data.early_access_enabled ? 'وصول مبكر ✓' : 'وصول مبكر ✗');
                 const name = data.name_ar || label;
                 document.getElementById(id).innerHTML = `
                     <h3>${name} <span class="tier-badge tier-badge--${badge}">${badge.toUpperCase()}</span></h3>
@@ -290,6 +371,22 @@
         });
         document.getElementById('back-btn').addEventListener('click', () => {
             if (step > (isEditMode ? 1 : 0)) showStep(step - 1);
+        });
+
+        // Discount scope toggle — show/hide limit field
+        document.getElementById('s-discount-scope').addEventListener('change', (e) => {
+            document.getElementById('s-discount-limit-wrap').style.display = e.target.value === 'limited' ? 'flex' : 'none';
+        });
+        document.getElementById('g-discount-scope').addEventListener('change', (e) => {
+            document.getElementById('g-discount-limit-wrap').style.display = e.target.value === 'limited' ? 'flex' : 'none';
+        });
+
+        // Feature toggles — show/hide related config fields
+        document.getElementById('s-feat-shipping').addEventListener('change', (e) => {
+            document.getElementById('s-shipping-wrap').style.display = e.target.checked ? 'flex' : 'none';
+        });
+        document.getElementById('g-feat-shipping').addEventListener('change', (e) => {
+            document.getElementById('g-shipping-wrap').style.display = e.target.checked ? 'flex' : 'none';
         });
 
         show('state-loading');

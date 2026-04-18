@@ -13,6 +13,7 @@ try:
     from fastapi import FastAPI, Request, Depends, HTTPException, Query, Body
     from fastapi.responses import JSONResponse
     from fastapi.middleware.cors import CORSMiddleware
+    from fastapi.staticfiles import StaticFiles
 except ImportError:
     print("FastAPI not installed. Install with: pip install fastapi uvicorn")
     sys.exit(1)
@@ -124,27 +125,93 @@ async def merchant_overview(
     period: str = Query(default="30d"),
     merchant_id: str = Depends(require_merchant),
 ):
+    """PRD §8.4: Member count by tier, revenue, churn, at-risk, ROI.
+    Time filtered: 7d / 30d / 3m / 12m."""
+    from datetime import timedelta
+    from decimal import Decimal
+
     db = _db_session()
     try:
-        from database.models import Merchant, Member
+        from database.models import Merchant, Member, MembershipPlan, BenefitEvent
         merchant = db.query(Merchant).filter(Merchant.id == merchant_id).first()
         if not merchant:
             raise HTTPException(404, "Merchant not found")
 
-        active_count = db.query(Member).filter(
-            Member.merchant_id == merchant_id,
-            Member.status == "active",
-        ).count()
+        # Time window
+        now = datetime.utcnow()
+        period_days = {"7d": 7, "30d": 30, "3m": 90, "12m": 365}.get(period, 30)
+        window_start = now - timedelta(days=period_days)
+
+        # All members for this merchant
+        all_members = db.query(Member).filter(Member.merchant_id == merchant_id).all()
+
+        active = [m for m in all_members if m.status == "active"]
+        cancelled = [m for m in all_members if m.status in ("cancelled", "expired")]
+        at_risk = [m for m in all_members if m.is_at_risk]
+
+        # Tier breakdown
+        plan_map = {}
+        for p in db.query(MembershipPlan).filter(MembershipPlan.merchant_id == merchant_id).all():
+            plan_map[p.id] = p
+
+        gold_count = sum(1 for m in active if m.plan_id in plan_map and plan_map[m.plan_id].tier == "gold")
+        silver_count = sum(1 for m in active if m.plan_id in plan_map and plan_map[m.plan_id].tier == "silver")
+
+        # Revenue = sum of subscribed_price for active members (monthly recurring)
+        monthly_revenue = sum(float(m.subscribed_price or 0) for m in active)
+
+        # Total savings across all members
+        total_saved = sum(float(m.total_saved_sar or 0) for m in all_members)
+
+        # Churn: members who cancelled/expired in the time window
+        churned_in_period = sum(
+            1 for m in cancelled
+            if m.cancelled_at and m.cancelled_at >= window_start
+        )
+        total_at_start = len(active) + churned_in_period
+        churn_rate = round((churned_in_period / total_at_start * 100) if total_at_start > 0 else 0, 1)
+
+        # New members in period
+        new_in_period = sum(
+            1 for m in all_members
+            if m.created_at and m.created_at >= window_start
+        )
+
+        # Benefit cost = total_saved (what members saved = merchant's cost)
+        benefit_cost = total_saved
+
+        # ROI: app cost vs member revenue
+        plan_prices = {"starter": 149, "pro": 299, "unlimited": 499}
+        app_cost = plan_prices.get(merchant.our_plan, 149)
+        net_value = monthly_revenue - benefit_cost - app_cost
+
+        # Salla store ID for public reference
+        salla_store_id = merchant.salla_store_id
 
         return {
             "store_name": merchant.store_name,
+            "salla_store_id": salla_store_id,
             "status": merchant.status,
             "our_plan": merchant.our_plan,
             "trial_ends_at": merchant.trial_ends_at.isoformat() if merchant.trial_ends_at else None,
             "setup_completed": merchant.setup_completed,
             "setup_step": merchant.setup_step,
-            "member_count": active_count,
             "period": period,
+            # KPIs
+            "member_count": len(active),
+            "gold_count": gold_count,
+            "silver_count": silver_count,
+            "monthly_revenue": round(monthly_revenue, 2),
+            "total_saved": round(total_saved, 2),
+            "churn_rate": churn_rate,
+            "churned_in_period": churned_in_period,
+            "new_in_period": new_in_period,
+            "at_risk_count": len(at_risk),
+            "cancelled_count": len(cancelled),
+            # Financial
+            "benefit_cost": round(benefit_cost, 2),
+            "app_cost": app_cost,
+            "net_value": round(net_value, 2),
         }
     finally:
         db.close()
@@ -177,18 +244,28 @@ async def merchant_members(
             (page - 1) * per_page
         ).limit(per_page).all()
 
+        plan_map = {}
+        for p in db.query(MembershipPlan).filter(MembershipPlan.merchant_id == merchant_id).all():
+            plan_map[p.id] = p
+
         return {
             "members": [
                 {
                     "id": m.id,
                     "salla_customer_id": m.salla_customer_id,
+                    "tier": plan_map[m.plan_id].tier if m.plan_id in plan_map else "silver",
+                    "tier_name_ar": plan_map[m.plan_id].display_name_ar if m.plan_id in plan_map else "",
+                    "tier_name_en": plan_map[m.plan_id].display_name_en if m.plan_id in plan_map else "",
                     "status": m.status,
                     "subscribed_price": str(m.subscribed_price),
                     "current_period_end": m.current_period_end.isoformat() if m.current_period_end else None,
+                    "next_renewal_at": m.next_renewal_at.isoformat() if m.next_renewal_at else None,
                     "is_at_risk": m.is_at_risk,
                     "total_saved_sar": str(m.total_saved_sar),
                     "free_shipping_used": m.free_shipping_used,
                     "free_shipping_quota": m.free_shipping_quota,
+                    "last_order_at": m.last_order_at.isoformat() if m.last_order_at else None,
+                    "cancelled_at": m.cancelled_at.isoformat() if m.cancelled_at else None,
                     "created_at": m.created_at.isoformat() if m.created_at else None,
                 }
                 for m in members
@@ -647,6 +724,89 @@ async def member_state(request: Request):
         db.close()
 
 
+@app.get("/api/v1/member/dashboard")
+async def member_dashboard(request: Request):
+    """Customer-facing full membership dashboard. Returns tier, benefits,
+    active gift/shipping codes, savings history."""
+    salla_customer_id = request.query_params.get("salla_customer_id")
+    store_id = request.query_params.get("store_id")
+
+    if not salla_customer_id or not store_id:
+        return {"is_member": False}
+
+    db = _db_session()
+    try:
+        from database.models import (
+            Merchant, Member, MembershipPlan,
+            GiftCoupon, FreeShippingCoupon, BenefitEvent,
+        )
+
+        merchant = db.query(Merchant).filter(
+            Merchant.salla_store_id == int(store_id)
+        ).first()
+        if not merchant:
+            return {"is_member": False}
+
+        member = db.query(Member).filter(
+            Member.merchant_id == merchant.id,
+            Member.salla_customer_id == int(salla_customer_id),
+            Member.status.in_(["active", "cancelled"]),
+        ).first()
+
+        if not member:
+            return {"is_member": False}
+
+        plan = db.query(MembershipPlan).filter(
+            MembershipPlan.id == member.plan_id,
+        ).first()
+
+        gifts = db.query(GiftCoupon).filter(
+            GiftCoupon.member_id == member.id,
+        ).order_by(GiftCoupon.month.desc()).limit(6).all()
+
+        shipping = db.query(FreeShippingCoupon).filter(
+            FreeShippingCoupon.member_id == member.id,
+        ).order_by(FreeShippingCoupon.month.desc()).limit(6).all()
+
+        recent_savings = db.query(BenefitEvent).filter(
+            BenefitEvent.member_id == member.id,
+        ).order_by(BenefitEvent.created_at.desc()).limit(10).all()
+
+        return {
+            "is_member": True,
+            "status": member.status,
+            "tier": plan.tier if plan else None,
+            "plan_name_ar": plan.display_name_ar if plan else None,
+            "plan_name_en": plan.display_name_en if plan else None,
+            "discount_pct": str(plan.discount_pct) if plan else "0",
+            "price": str(member.subscribed_price),
+            "free_shipping_used": member.free_shipping_used,
+            "free_shipping_quota": member.free_shipping_quota,
+            "current_period_end": member.current_period_end.isoformat() if member.current_period_end else None,
+            "total_saved_sar": str(member.total_saved_sar),
+            "member_since": member.created_at.isoformat() if member.created_at else None,
+            "gifts": [
+                {"month": g.month, "code": g.coupon_code, "status": g.status,
+                 "desc_ar": g.gift_description_ar, "expires": g.expires_at.isoformat() if g.expires_at else None}
+                for g in gifts
+            ],
+            "shipping": [
+                {"month": s.month, "code": s.coupon_code, "quota": s.quota,
+                 "used": s.used_count, "status": s.status}
+                for s in shipping
+            ],
+            "recent_savings": [
+                {"type": e.event_type, "amount": str(e.amount_saved) if e.amount_saved else None,
+                 "date": e.created_at.isoformat() if e.created_at else None}
+                for e in recent_savings
+            ],
+        }
+    except (ValueError, TypeError):
+        return {"is_member": False}
+    finally:
+        db.close()
+
+
 # ---------------------------------------------------------------------------
 # Setup Wizard — PRD §8.2, §43.4
 # ---------------------------------------------------------------------------
@@ -729,6 +889,24 @@ async def setup_complete(
         merchant.setup_step = 5
         db.commit()
 
+        # Provision Salla resources (customer groups + special offers) async
+        # Also enable recurring payments on the merchant's store
+        try:
+            from salla.provisioning import provision_merchant_program
+            from salla.client import SallaClient
+            client = SallaClient(db, merchant.id)
+            # Enable recurring payments on merchant's Salla store
+            try:
+                client._call("PUT", "https://api.salla.dev/admin/v2/settings/fields/enable_recurring_payment",
+                             {"value": True})
+                merchant.recurring_enabled = True
+                db.commit()
+            except Exception as exc:
+                logger.warning("Failed to enable recurring payments: %s", exc)
+            provision_merchant_program(db, merchant.id)
+        except Exception as exc:
+            logger.warning("Salla provisioning failed (non-blocking): %s", exc)
+
         return {"setup_completed": True, "message": "Program launched"}
     except HTTPException:
         raise
@@ -778,6 +956,71 @@ async def public_plans(store_id: str):
                 for p in plans
             ],
         }
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# Interest Registration — public endpoint for pre-launch signups
+# ---------------------------------------------------------------------------
+@app.post("/api/v1/store/{store_id}/interest")
+async def register_interest(store_id: str, payload: dict = Body(...)):
+    """Allow potential members to register interest before launch."""
+    db = _db_session()
+    try:
+        from database.models import Merchant, InterestRegistration
+
+        merchant = db.query(Merchant).filter(
+            Merchant.salla_store_id == int(store_id)
+        ).first() if store_id.isdigit() else None
+        if not merchant:
+            raise HTTPException(404, "Store not found")
+
+        salla_customer_id = payload.get("salla_customer_id")
+        if not salla_customer_id:
+            raise HTTPException(400, "Missing salla_customer_id")
+
+        # Check duplicate
+        existing = db.query(InterestRegistration).filter(
+            InterestRegistration.merchant_id == merchant.id,
+            InterestRegistration.salla_customer_id == int(salla_customer_id),
+        ).first()
+        if existing:
+            return {"status": "already_registered", "id": existing.id}
+
+        reg = InterestRegistration(
+            merchant_id=merchant.id,
+            salla_customer_id=int(salla_customer_id),
+            preferred_tier=payload.get("preferred_tier", "gold"),
+        )
+        db.add(reg)
+        db.commit()
+        return {"status": "registered", "id": reg.id}
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# OAuth Access — exchange permanent token for session
+# ---------------------------------------------------------------------------
+@app.get("/api/v1/access")
+async def access_redirect(request: Request, token: str = Query(...), goto: str = Query("dashboard")):
+    """PRD Appendix B: Exchange permanent access token for session cookie."""
+    from auth.session import create_session
+    from fastapi.responses import RedirectResponse
+
+    db = _db_session()
+    try:
+        from database.models import Merchant
+        merchant = db.query(Merchant).filter(
+            Merchant.permanent_access_token == token
+        ).first()
+        if not merchant:
+            raise HTTPException(401, "Invalid access token")
+
+        response = RedirectResponse(url=f"/frontend/{goto}.html")
+        create_session(response, merchant.id)
+        return response
     finally:
         db.close()
 
@@ -835,6 +1078,12 @@ async def root():
         "webhooks": "/webhooks/salla",
     }
 
+
+import os as _os
+_frontend_dir = _os.path.join(_os.path.dirname(__file__), "..", "..", "..", "frontend")
+_frontend_dir = _os.path.abspath(_frontend_dir)
+if _os.path.isdir(_frontend_dir):
+    app.mount("/frontend", StaticFiles(directory=_frontend_dir, html=True), name="frontend")
 
 if __name__ == "__main__":
     import uvicorn

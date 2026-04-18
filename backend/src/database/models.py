@@ -105,6 +105,25 @@ class Merchant(Base):
 
 
 # ---------------------------------------------------------------------------
+# OAuth tokens — unified storage for SallaClient + token refresh
+# ---------------------------------------------------------------------------
+class OAuthToken(Base):
+    __tablename__ = "oauth_tokens"
+
+    id = Column(String(36), primary_key=True, default=_uuid)
+    merchant_id = Column(String(36), ForeignKey("merchants.id"), unique=True, nullable=False, index=True)
+    access_token = Column(Text, nullable=False)
+    refresh_token = Column(Text, nullable=False)
+    expires_at = Column(DateTime, nullable=True)
+    scope = Column(String(500), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    def __repr__(self):
+        return f"<OAuthToken {self.id} | merchant={self.merchant_id} | expires={self.expires_at}>"
+
+
+# ---------------------------------------------------------------------------
 # §14.2 membership_plans
 # ---------------------------------------------------------------------------
 class MembershipPlan(Base):
