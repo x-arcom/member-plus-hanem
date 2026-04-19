@@ -1577,6 +1577,11 @@ _frontend_dir = _os.path.abspath(_frontend_dir)
 if _os.path.isdir(_frontend_dir):
     app.mount("/frontend", StaticFiles(directory=_frontend_dir, html=True), name="frontend")
 
+_legal_dir = _os.path.join(_os.path.dirname(__file__), "..", "..", "..", "legal")
+_legal_dir = _os.path.abspath(_legal_dir)
+if _os.path.isdir(_legal_dir):
+    app.mount("/legal", StaticFiles(directory=_legal_dir, html=True), name="legal")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

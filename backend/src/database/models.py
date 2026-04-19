@@ -458,6 +458,8 @@ class EmailLog(Base):
         String(20), nullable=False, default="sent",
     )  # sent | delivered | opened | bounced | failed
 
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
     sent_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     delivered_at = Column(DateTime, nullable=True)
     opened_at = Column(DateTime, nullable=True)
