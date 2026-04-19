@@ -161,7 +161,7 @@
                 </p>
                 <div class="row">
                     <div class="field">
-                        <label for="roi-spend">الإنفاق الشهري (SAR)</label>
+                        <label for="roi-spend">الإنفاق الشهري (ر.س)</label>
                         <input id="roi-spend" class="input" type="number" min="0" step="10" value="500">
                     </div>
                 </div>
@@ -232,9 +232,9 @@
                 return `
                     <article class="tier-card ${isGold ? 'tier-card--gold' : ''}">
                         ${isGold ? '<div class="tier-card__badge">الأكثر شعبية</div>' : ''}
-                        <div class="tier-card__label">${p.tier.toUpperCase()}</div>
+                        <div class="tier-card__label">${p.tier === 'gold' ? 'الذهبية' : 'الفضية'}</div>
                         <div class="tier-card__name">${p.display_name_ar || p.tier}</div>
-                        <div class="tier-card__price">${p.price} <small>SAR / شهر</small></div>
+                        <div class="tier-card__price">${p.price} <small>ر.س / شهر</small></div>
                         <ul class="tier-card__benefits">
                             ${benefits.map(b => `<li class="tier-card__benefit">${b}</li>`).join('')}
                         </ul>

@@ -123,10 +123,25 @@
             h += '<div class="disclaimer">التغييرات تُطبَّق على العملاء الجدد فقط. العملاء الحاليون يستمرون على إعداداتهم الحالية.</div>';
             h += '<div class="plans-row">';
             plansData.forEach(p => {
+                const cycleLabel = p.billing_cycle === 'yearly' ? 'سنوي' : 'شهري';
+                const cycleUnit = p.billing_cycle === 'yearly' ? 'ر.س/سنة' : 'ر.س/شهر';
                 h += '<div class="plan-card plan-card--' + p.tier + '">'
+                    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-3);">'
                     + '<div class="plan-card__tier">' + (p.tier === 'gold' ? 'الذهبية' : 'الفضية') + '</div>'
+                    + '<button class="btn btn--ghost edit-plan-btn" data-tier="' + p.tier + '" style="font-size:var(--font-size-xs);padding:2px 10px;">✏️ تعديل</button>'
+                    + '</div>'
                     + '<div class="plan-card__name">' + p.display_name_ar + '</div>'
-                    + '<div class="plan-card__price">' + p.price + ' <small>ر.س/شهر</small></div>'
+                    // Read-only display
+                    + '<div class="plan-display-' + p.tier + '">'
+                    + '<div class="plan-card__price">' + p.price + ' <small>' + cycleUnit + '</small></div>'
+                    + '<div style="font-size:var(--font-size-xs);color:var(--color-text-secondary);margin-top:var(--space-2);">دورة الفوترة: ' + cycleLabel + '</div>'
+                    + '</div>'
+                    // Edit form — hidden
+                    + '<div class="plan-form-' + p.tier + '" style="display:none;margin-top:var(--space-3);">'
+                    + '<div style="margin-bottom:var(--space-3);"><label style="font-size:var(--font-size-xs);color:var(--color-text-secondary);">السعر (ر.س)</label><input type="number" class="input plan-price-inp" data-tier="' + p.tier + '" min="0" step="0.01" value="' + p.price + '" style="margin-top:4px;"></div>'
+                    + '<div style="margin-bottom:var(--space-3);"><label style="font-size:var(--font-size-xs);color:var(--color-text-secondary);">دورة الفوترة</label><select class="input plan-cycle-inp" data-tier="' + p.tier + '" style="margin-top:4px;"><option value="monthly"' + (p.billing_cycle !== 'yearly' ? ' selected' : '') + '>شهري</option><option value="yearly"' + (p.billing_cycle === 'yearly' ? ' selected' : '') + '>سنوي</option></select></div>'
+                    + '<div style="display:flex;gap:var(--space-2);"><button class="btn btn--primary save-plan-btn" data-tier="' + p.tier + '" style="flex:1;font-size:var(--font-size-xs);">حفظ</button><button class="btn btn--ghost cancel-plan-btn" data-tier="' + p.tier + '" style="font-size:var(--font-size-xs);">إلغاء</button></div>'
+                    + '</div>'
                     + '</div>';
             });
             h += '</div>';
@@ -267,6 +282,39 @@
                     document.querySelector('.ship-display-' + t).style.display = '';
                     document.querySelector('.ship-form-' + t).style.display = 'none';
                     document.querySelector('.edit-tier-ship[data-tier="' + t + '"]').style.display = '';
+                });
+            });
+
+            // ── Wire plan price/cycle edit ──
+            document.querySelectorAll('.edit-plan-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const t = btn.dataset.tier;
+                    document.querySelector('.plan-display-' + t).style.display = 'none';
+                    document.querySelector('.plan-form-' + t).style.display = 'block';
+                    btn.style.display = 'none';
+                });
+            });
+            document.querySelectorAll('.save-plan-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const t = btn.dataset.tier;
+                    const price = document.querySelector('.plan-price-inp[data-tier="' + t + '"]').value;
+                    const cycle = document.querySelector('.plan-cycle-inp[data-tier="' + t + '"]').value;
+                    const cycleLabel = cycle === 'yearly' ? 'سنوي' : 'شهري';
+                    const cycleUnit = cycle === 'yearly' ? 'ر.س/سنة' : 'ر.س/شهر';
+                    const display = document.querySelector('.plan-display-' + t);
+                    display.innerHTML = '<div class="plan-card__price">' + price + ' <small>' + cycleUnit + '</small></div><div style="font-size:var(--font-size-xs);color:var(--color-text-secondary);margin-top:var(--space-2);">دورة الفوترة: ' + cycleLabel + '</div>';
+                    display.style.display = '';
+                    document.querySelector('.plan-form-' + t).style.display = 'none';
+                    document.querySelector('.edit-plan-btn[data-tier="' + t + '"]').style.display = '';
+                    MP.toast('تم حفظ ' + (t === 'gold' ? 'الذهبية' : 'الفضية') + ': ' + price + ' ' + cycleUnit, 'success');
+                });
+            });
+            document.querySelectorAll('.cancel-plan-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const t = btn.dataset.tier;
+                    document.querySelector('.plan-display-' + t).style.display = '';
+                    document.querySelector('.plan-form-' + t).style.display = 'none';
+                    document.querySelector('.edit-plan-btn[data-tier="' + t + '"]').style.display = '';
                 });
             });
 

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Member Plus — App Snippet Preview</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'IBM Plex Sans Arabic', sans-serif; background: #fafafa; min-height: 100vh; color: #1a1a1a; }
+
+        /* ═══ Fake store ═══ */
+        .store { max-width: 1100px; margin: 0 auto; padding: 20px; }
+        .store-bar { background: #fff; padding: 14px 24px; border-radius: 14px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+        .store-bar h1 { font-size: 17px; font-weight: 600; }
+        .store-bar nav { display: flex; gap: 20px; font-size: 13px; color: #888; }
+        .store-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+        .store-card { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+        .store-card__img { height: 220px; background: linear-gradient(135deg, #f8f4ff 0%, #f0e8f8 100%); position: relative; }
+        .store-card__img::after { content: ''; position: absolute; inset: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Crect width='60' height='60' fill='none'/%3E%3Ccircle cx='30' cy='30' r='20' fill='%23e8dff0' opacity='0.5'/%3E%3C/svg%3E") center/60px; opacity: 0.3; }
+        .store-card__body { padding: 16px; }
+        .store-card__name { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+        .store-card__price { font-size: 15px; font-weight: 700; color: #BE52EF; }
+        .store-card__old { font-size: 12px; color: #aaa; text-decoration: line-through; margin-inline-start: 6px; }
+
+        .demo-controls { text-align: center; padding: 48px 20px 20px; }
+        .demo-controls p { color: #999; font-size: 13px; margin-bottom: 16px; }
+        .demo-controls__btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+        .demo-btn { padding: 10px 18px; border: 1px solid #e0dcd6; border-radius: 10px; cursor: pointer; background: #fff; font: inherit; font-size: 13px; transition: all 0.15s; }
+        .demo-btn:hover { border-color: #BE52EF; color: #BE52EF; }
+        .demo-btn--active { background: #BE52EF; color: #fff; border-color: #BE52EF; }
+
+        /* ═══════════════════════════════════════════════════════
+           MEMBER PLUS SNIPPET — production-ready component
+           ═══════════════════════════════════════════════════════ */
+        .mps { position: fixed; bottom: 24px; inset-inline-start: 24px; z-index: 99999; font-family: 'IBM Plex Sans Arabic', sans-serif; direction: rtl; }
+        @media (max-width: 480px) { .mps { bottom: 16px; inset-inline-start: 16px; } }
+
+        /* ── Badge ── */
+        .mps-badge {
+            display: flex; align-items: center; gap: 0;
+            background: #fff;
+            border: none; border-radius: 999px;
+            padding: 0;
+            cursor: pointer;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.04);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow: hidden;
+            height: 48px;
+        }
+        .mps-badge:hover { box-shadow: 0 6px 24px rgba(0,0,0,0.14), 0 0 0 1px rgba(0,0,0,0.06); transform: translateY(-2px); }
+        .mps-badge__icon {
+            width: 48px; height: 48px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; flex-shrink: 0;
+        }
+        .mps-badge__icon--gold { background: linear-gradient(135deg, #C9A84C, #E8D5A0); }
+        .mps-badge__icon--silver { background: linear-gradient(135deg, #B0A898, #D4CFC8); }
+        .mps-badge__icon--join { background: linear-gradient(135deg, #BE52EF, #9B35D4); }
+        .mps-badge__icon--soon { background: linear-gradient(135deg, #C9A84C, #E8D5A0); }
+        .mps-badge__text { padding: 0 16px 0 4px; display: flex; flex-direction: column; justify-content: center; line-height: 1.25; }
+        [dir="ltr"] .mps-badge__text { padding: 0 4px 0 16px; }
+        .mps-badge__sub { font-size: 10px; color: #999; font-weight: 400; }
+        .mps-badge__main { font-size: 13px; font-weight: 600; color: #1a1a1a; }
+
+        /* ── Popup Card ── */
+        .mps-popup {
+            position: absolute; bottom: calc(100% + 10px); inset-inline-start: 0;
+            width: 340px; background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04);
+            transform: translateY(10px) scale(0.96); opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow: hidden;
+        }
+        .mps-popup.is-open { transform: translateY(0) scale(1); opacity: 1; pointer-events: auto; }
+        @media (max-width: 400px) { .mps-popup { width: calc(100vw - 32px); inset-inline-start: -8px; } }
+
+        .mps-popup__hero { padding: 28px 24px 20px; text-align: center; position: relative; }
+        .mps-popup__hero--gold { background: linear-gradient(160deg, #C9A84C 0%, #E8D5A0 40%, #D4BC6A 100%); color: #1a1a1a; }
+        .mps-popup__hero--silver { background: linear-gradient(160deg, #B0A898 0%, #D4CFC8 40%, #C0B8AE 100%); color: #1a1a1a; }
+        .mps-popup__hero--join { background: linear-gradient(160deg, #BE52EF 0%, #D98EF7 40%, #9B35D4 100%); color: #fff; }
+        .mps-popup__hero--soon { background: linear-gradient(160deg, #1a1a1a 0%, #2a2520 100%); color: #fff; }
+        .mps-popup__emoji { font-size: 36px; margin-bottom: 10px; }
+        .mps-popup__title { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+        .mps-popup__sub { font-size: 12px; opacity: 0.75; margin-top: 4px; }
+        .mps-popup__close { position: absolute; top: 14px; inset-inline-end: 14px; background: rgba(255,255,255,0.2); backdrop-filter: blur(4px); border: none; color: inherit; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
+        .mps-popup__close:hover { background: rgba(255,255,255,0.35); }
+
+        .mps-popup__body { padding: 20px 24px; }
+        .mps-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; }
+        .mps-row + .mps-row { border-top: 1px solid #f0ede8; }
+        .mps-row__label { font-size: 13px; color: #7a7570; }
+        .mps-row__val { font-size: 14px; font-weight: 600; }
+        .mps-row__val--accent { color: #BE52EF; }
+        .mps-row__val--green { color: #047857; }
+        .mps-row__val--gold { color: #C9A84C; }
+
+        .mps-popup__actions { padding: 0 24px 20px; display: flex; flex-direction: column; gap: 8px; }
+        .mps-btn {
+            display: block; width: 100%; padding: 12px 16px;
+            border-radius: 12px; font: inherit; font-size: 14px; font-weight: 600;
+            cursor: pointer; text-align: center; text-decoration: none; border: none;
+            transition: all 0.15s;
+        }
+        .mps-btn--primary { background: #BE52EF; color: #fff; box-shadow: 0 2px 8px rgba(190,82,239,0.25); }
+        .mps-btn--primary:hover { background: #9B35D4; box-shadow: 0 4px 14px rgba(190,82,239,0.3); }
+        .mps-btn--secondary { background: transparent; color: #BE52EF; border: 1px solid #E8D0F8; }
+        .mps-btn--secondary:hover { background: #F7F0FC; }
+        .mps-btn--dark { background: #1a1a1a; color: #C9A84C; }
+        .mps-btn--dark:hover { background: #2a2520; }
+
+        .mps-popup__footer { text-align: center; padding: 0 24px 16px; font-size: 10px; color: #ccc; }
+
+        /* Interest form */
+        .mps-interest { padding: 0 24px 20px; text-align: center; }
+        .mps-interest p { font-size: 13px; color: #7a7570; margin-bottom: 14px; line-height: 1.6; }
+        .mps-interest__done { color: #047857; font-size: 13px; font-weight: 500; margin-top: 10px; }
+
+        /* Savings highlight */
+        .mps-savings {
+            margin: 0 24px 16px; padding: 14px;
+            background: linear-gradient(135deg, #F7F0FC 0%, #FAF0FF 100%);
+            border-radius: 12px; text-align: center;
+        }
+        .mps-savings__val { font-size: 22px; font-weight: 700; color: #BE52EF; }
+        .mps-savings__label { font-size: 11px; color: #7a7570; margin-top: 2px; }
+
+        /* Tier comparison mini */
+        .mps-tiers { display: flex; gap: 8px; margin: 0 24px 16px; }
+        .mps-tier {
+            flex: 1; padding: 14px 12px; border-radius: 12px;
+            text-align: center; border: 1px solid #f0ede8;
+        }
+        .mps-tier--gold { border-color: #C9A84C; background: rgba(201,168,76,0.04); }
+        .mps-tier__name { font-size: 11px; font-weight: 600; color: #999; text-transform: uppercase; letter-spacing: 0.06em; }
+        .mps-tier--gold .mps-tier__name { color: #C9A84C; }
+        .mps-tier__price { font-size: 18px; font-weight: 700; margin-top: 4px; }
+        .mps-tier__unit { font-size: 10px; color: #999; }
+    </style>
+</head>
+<body>
+
+    <!-- ═══ Fake store ═══ -->
+    <div class="store">
+        <div class="store-bar">
+            <h1>متجر الأناقة</h1>
+            <nav><span>الرئيسية</span><span>المنتجات</span><span>العروض</span><span>تواصل معنا</span></nav>
+        </div>
+        <div class="store-grid">
+            <div class="store-card"><div class="store-card__img"></div><div class="store-card__body"><div class="store-card__name">حقيبة جلد إيطالي</div><div class="store-card__price">320 ر.س <span class="store-card__old">400 ر.س</span></div></div></div>
+            <div class="store-card"><div class="store-card__img"></div><div class="store-card__body"><div class="store-card__name">ساعة كلاسيكية</div><div class="store-card__price">450 ر.س</div></div></div>
+            <div class="store-card"><div class="store-card__img"></div><div class="store-card__body"><div class="store-card__name">نظارة شمسية</div><div class="store-card__price">180 ر.س</div></div></div>
+            <div class="store-card"><div class="store-card__img"></div><div class="store-card__body"><div class="store-card__name">عطر فاخر</div><div class="store-card__price">290 ر.س</div></div></div>
+        </div>
+        <div class="demo-controls">
+            <p>اختر حالة العميل لمعاينة السنيبت</p>
+            <div class="demo-controls__btns" id="demo-btns">
+                <button class="demo-btn demo-btn--active" onclick="go('gold')">عضو ذهبي</button>
+                <button class="demo-btn" onclick="go('silver')">عضو فضي</button>
+                <button class="demo-btn" onclick="go('visitor')">زائر جديد</button>
+                <button class="demo-btn" onclick="go('soon')">قريباً</button>
+                <button class="demo-btn" onclick="go('former')">عضو سابق</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ SNIPPET ═══ -->
+    <div class="mps" id="mps">
+        <div class="mps-popup" id="popup"></div>
+        <button class="mps-badge" id="badge" type="button"></button>
+    </div>
+
+    <script>
+        let state = 'gold', open = false;
+
+        function go(s) {
+            state = s; open = false;
+            document.querySelectorAll('.demo-btn').forEach(b => b.classList.toggle('demo-btn--active', b.textContent.includes({gold:'ذهبي',silver:'فضي',visitor:'زائر',soon:'قريباً',former:'سابق'}[s])));
+            render();
+        }
+
+        function toggle() { open = !open; document.getElementById('popup').classList.toggle('is-open', open); }
+
+        document.getElementById('badge').addEventListener('click', toggle);
+        document.addEventListener('click', e => { if (open && !document.getElementById('mps').contains(e.target)) { open = false; document.getElementById('popup').classList.remove('is-open'); }});
+
+        function render() {
+            const badge = document.getElementById('badge');
+            const popup = document.getElementById('popup');
+            popup.classList.remove('is-open');
+
+            if (state === 'gold' || state === 'silver') {
+                const isGold = state === 'gold';
+                badge.innerHTML = `<div class="mps-badge__icon mps-badge__icon--${state}">${isGold?'👑':'💎'}</div><div class="mps-badge__text"><span class="mps-badge__sub">عضو ${isGold?'ذهبي':'فضي'}</span><span class="mps-badge__main">${isGold?'الباقة الذهبية':'الباقة الفضية'}</span></div>`;
+
+                popup.innerHTML = `
+                    <button class="mps-popup__close" onclick="toggle()">✕</button>
+                    <div class="mps-popup__hero mps-popup__hero--${state}">
+                        <div class="mps-popup__emoji">${isGold?'👑':'💎'}</div>
+                        <div class="mps-popup__title">${isGold?'الباقة الذهبية':'الباقة الفضية'}</div>
+                        <div class="mps-popup__sub">عضوية نشطة</div>
+                    </div>
+                    <div class="mps-savings">
+                        <div class="mps-savings__val">${isGold?'245.50':'87.00'} ر.س</div>
+                        <div class="mps-savings__label">إجمالي ما وفّرته</div>
+                    </div>
+                    <div class="mps-popup__body">
+                        <div class="mps-row"><span class="mps-row__label">الخصم التلقائي</span><span class="mps-row__val mps-row__val--accent">${isGold?'15':'10'}%</span></div>
+                        <div class="mps-row"><span class="mps-row__label">الشحن المجاني</span><span class="mps-row__val">${isGold?'2 من 4':'1 من 2'} متبقي</span></div>
+                        ${isGold?'<div class="mps-row"><span class="mps-row__label">الهدية الشهرية</span><span class="mps-row__val mps-row__val--green">متاحة</span></div>':''}
+                        <div class="mps-row"><span class="mps-row__label">التجديد القادم</span><span class="mps-row__val">May 10, 2026</span></div>
+                    </div>
+                    <div class="mps-popup__actions">
+                        <a class="mps-btn mps-btn--primary" href="member.html">عرض عضويتي</a>
+                        ${!isGold?'<a class="mps-btn mps-btn--secondary" href="customer.html?store=99999">ترقية للذهبية</a>':''}
+                    </div>
+                    <div class="mps-popup__footer">Member Plus</div>`;
+
+            } else if (state === 'visitor') {
+                badge.innerHTML = `<div class="mps-badge__icon mps-badge__icon--join">💎</div><div class="mps-badge__text"><span class="mps-badge__sub">برنامج العضوية</span><span class="mps-badge__main">انضم الآن</span></div>`;
+
+                popup.innerHTML = `
+                    <button class="mps-popup__close" onclick="toggle()">✕</button>
+                    <div class="mps-popup__hero mps-popup__hero--join">
+                        <div class="mps-popup__emoji">💎</div>
+                        <div class="mps-popup__title">انضم لبرنامج العضوية</div>
+                        <div class="mps-popup__sub">خصومات حصرية · شحن مجاني · هدايا شهرية</div>
+                    </div>
+                    <div class="mps-tiers">
+                        <div class="mps-tier"><div class="mps-tier__name">فضية</div><div class="mps-tier__price">49</div><div class="mps-tier__unit">ر.س/شهر</div></div>
+                        <div class="mps-tier mps-tier--gold"><div class="mps-tier__name">ذهبية</div><div class="mps-tier__price">99</div><div class="mps-tier__unit">ر.س/شهر</div></div>
+                    </div>
+                    <div class="mps-popup__body">
+                        <div class="mps-row"><span class="mps-row__label">خصم تلقائي</span><span class="mps-row__val">حتى 15%</span></div>
+                        <div class="mps-row"><span class="mps-row__label">شحن مجاني</span><span class="mps-row__val">حتى 4 مرات/شهر</span></div>
+                        <div class="mps-row"><span class="mps-row__label">هدية شهرية</span><span class="mps-row__val mps-row__val--gold">الذهبية فقط</span></div>
+                    </div>
+                    <div class="mps-popup__actions">
+                        <a class="mps-btn mps-btn--primary" href="customer.html?store=99999">عرض الباقات والانضمام</a>
+                    </div>
+                    <div class="mps-popup__footer">Member Plus</div>`;
+
+            } else if (state === 'former') {
+                badge.innerHTML = `<div class="mps-badge__icon mps-badge__icon--join">💎</div><div class="mps-badge__text"><span class="mps-badge__sub">عضو سابق</span><span class="mps-badge__main">عُد للعضوية</span></div>`;
+
+                popup.innerHTML = `
+                    <button class="mps-popup__close" onclick="toggle()">✕</button>
+                    <div class="mps-popup__hero mps-popup__hero--join">
+                        <div class="mps-popup__emoji">🔄</div>
+                        <div class="mps-popup__title">نفتقدك!</div>
+                        <div class="mps-popup__sub">كنت عضواً ووفّرت معنا</div>
+                    </div>
+                    <div class="mps-savings">
+                        <div class="mps-savings__val">450.25 ر.س</div>
+                        <div class="mps-savings__label">وفّرتها خلال عضويتك السابقة</div>
+                    </div>
+                    <div class="mps-popup__body">
+                        <div class="mps-row"><span class="mps-row__label">الباقة السابقة</span><span class="mps-row__val mps-row__val--gold">الذهبية</span></div>
+                        <div class="mps-row"><span class="mps-row__label">انتهت في</span><span class="mps-row__val">March 15, 2026</span></div>
+                    </div>
+                    <div class="mps-popup__actions">
+                        <a class="mps-btn mps-btn--primary" href="customer.html?store=99999">إعادة الاشتراك</a>
+                    </div>
+                    <div class="mps-popup__footer">Member Plus</div>`;
+
+            } else if (state === 'soon') {
+                badge.innerHTML = `<div class="mps-badge__icon mps-badge__icon--soon">✨</div><div class="mps-badge__text"><span class="mps-badge__sub">قريباً</span><span class="mps-badge__main">برنامج العضوية</span></div>`;
+
+                popup.innerHTML = `
+                    <button class="mps-popup__close" onclick="toggle()">✕</button>
+                    <div class="mps-popup__hero mps-popup__hero--soon">
+                        <div class="mps-popup__emoji">✨</div>
+                        <div class="mps-popup__title">برنامج العضوية قريباً</div>
+                        <div class="mps-popup__sub">خصومات · شحن مجاني · هدايا حصرية</div>
+                    </div>
+                    <div class="mps-interest">
+                        <p>سجّل اهتمامك وسنبلغك فور الإطلاق — كن من أوائل الأعضاء!</p>
+                        <button class="mps-btn mps-btn--dark" id="int-btn" onclick="registerInterest()">أنا مهتم ✨</button>
+                        <div class="mps-interest__done" id="int-done" style="display:none;">✓ تم التسجيل — سنبلغك فور الإطلاق</div>
+                    </div>
+                    <div class="mps-popup__footer">Member Plus</div>`;
+            }
+        }
+
+        function registerInterest() {
+            const btn = document.getElementById('int-btn');
+            btn.disabled = true; btn.textContent = 'جاري التسجيل...';
+            setTimeout(() => {
+                btn.style.display = 'none';
+                document.getElementById('int-done').style.display = 'block';
+            }, 600);
+        }
+
+        render();
+    </script>
+</body>
+</html>

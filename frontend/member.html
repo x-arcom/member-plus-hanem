@@ -6,150 +6,141 @@
     <title>عضويتي — Member Plus</title>
     <link rel="stylesheet" href="styles.css">
     <style>
-        body { background: var(--c-neutral-50); }
-        .member-shell { max-width: 640px; margin: 0 auto; padding: var(--space-6) var(--space-4); }
+        body { background: var(--color-bg); }
+        .mp { max-width: 560px; margin: 0 auto; padding: var(--space-6) var(--space-4); }
 
-        /* PRD §9.4 Header: Tier badge. Renewal date. Total savings. */
-        .member-header {
-            background: var(--c-near-black);
-            color: var(--color-text-inverse);
-            border-radius: var(--radius-md);
-            padding: var(--space-6);
-            text-align: center;
-            margin-bottom: var(--space-5);
-        }
-        .member-header__badge {
-            display: inline-block;
-            padding: var(--space-1) var(--space-4);
-            border-radius: var(--radius-pill);
-            font-size: var(--font-size-xs);
-            font-weight: var(--font-weight-bold);
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            margin-bottom: var(--space-3);
-        }
-        .badge--gold { background: var(--c-gold); color: var(--c-near-black); }
-        .badge--silver { background: var(--c-silver); color: var(--c-near-black); }
-        .badge--grace { background: var(--c-danger-500); color: #fff; }
-        .member-header__name {
-            font-family: var(--font-display);
-            font-size: var(--font-size-2xl);
-            font-weight: 600;
-            margin-bottom: var(--space-2);
-        }
-        .member-header__renewal { font-size: var(--font-size-sm); opacity: 0.8; }
-        .member-header__savings {
-            margin-top: var(--space-3);
-            font-family: var(--font-display);
-            font-size: var(--font-size-xl);
-            color: var(--c-gold);
-        }
+        .mp-header { text-align: center; margin-bottom: var(--space-6); }
+        .mp-header img { height: 32px; margin-bottom: var(--space-2); }
+        .mp-header__store { font-size: var(--font-size-xs); color: var(--color-text-secondary); }
 
-        /* Benefit cards — PRD §9.4 */
-        .benefit-card {
-            background: var(--color-surface);
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius-md);
-            padding: var(--space-5);
-            margin-bottom: var(--space-4);
-        }
-        .benefit-card__head {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: var(--space-3);
-        }
-        .benefit-card__title { font-weight: var(--font-weight-bold); font-size: var(--font-size-md); }
-        .benefit-card__code {
-            font-family: monospace;
-            font-size: var(--font-size-lg);
-            font-weight: var(--font-weight-bold);
-            color: var(--c-purple);
-            letter-spacing: 0.08em;
-            padding: var(--space-3) var(--space-4);
-            background: var(--c-purple-ll);
-            border-radius: var(--radius-md);
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .benefit-card__meta {
-            font-size: var(--font-size-xs);
-            color: var(--color-text-secondary);
-            margin-top: var(--space-2);
-        }
-        .benefit-card__bar {
-            height: 6px;
-            background: var(--color-border);
-            border-radius: var(--radius-pill);
-            overflow: hidden;
-            margin-top: var(--space-3);
-        }
-        .benefit-card__bar-fill { height: 100%; background: var(--c-purple); }
+        .tier-hero { border-radius: var(--radius-lg); padding: var(--space-8) var(--space-6); text-align: center; margin-bottom: var(--space-5); position: relative; overflow: hidden; }
+        .tier-hero--gold { background: linear-gradient(135deg, #C9A84C 0%, #E8D5A0 50%, #C9A84C 100%); color: #1a1a1a; }
+        .tier-hero--silver { background: linear-gradient(135deg, #B0A898 0%, #D4CFC8 50%, #B0A898 100%); color: #1a1a1a; }
+        .tier-hero--cancelled { background: var(--color-surface-muted); color: var(--color-text-primary); border: 1px solid var(--color-border); }
+        .tier-hero__icon { font-size: 48px; margin-bottom: var(--space-3); }
+        .tier-hero__name { font-family: var(--font-display); font-size: var(--font-size-2xl); font-weight: 700; margin-bottom: var(--space-1); }
+        .tier-hero__status { font-size: var(--font-size-sm); opacity: 0.8; }
+        .tier-hero__since { font-size: var(--font-size-xs); opacity: 0.6; margin-top: var(--space-2); }
 
-        /* Grace period CTA — PRD §9.4: full-width red */
-        .grace-cta {
-            background: var(--c-danger-50);
-            border: 2px solid var(--c-danger-500);
-            border-radius: var(--radius-md);
-            padding: var(--space-5);
-            text-align: center;
-            margin-bottom: var(--space-5);
-            color: var(--c-danger-700);
-            font-size: var(--font-size-md);
-        }
+        .savings-banner { display: flex; align-items: center; justify-content: center; gap: var(--space-3); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-5); text-align: center; }
+        .savings-banner__value { font-family: var(--font-display); font-size: var(--font-size-2xl); font-weight: 700; color: var(--c-purple); }
+        .savings-banner__label { font-size: var(--font-size-xs); color: var(--color-text-secondary); }
+
+        .benefits { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-bottom: var(--space-5); }
+        @media (max-width: 400px) { .benefits { grid-template-columns: 1fr; } }
+        .ben { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-4); text-align: center; }
+        .ben__icon { font-size: 24px; margin-bottom: var(--space-2); }
+        .ben__name { font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); margin-bottom: 2px; }
+        .ben__value { font-family: var(--font-display); font-size: var(--font-size-lg); font-weight: 700; color: var(--c-purple); }
+        .ben--off { opacity: 0.4; }
+        .ben--off .ben__value { color: var(--color-text-secondary); }
+
+        .section-label { font-family: var(--font-display); font-size: var(--font-size-lg); font-weight: 600; margin-bottom: var(--space-3); margin-top: var(--space-6); }
+
+        .code-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-3); }
+        .code-card--active { border-color: var(--c-success-700); }
+        .code-card__top { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-2); }
+        .code-card__label { font-size: var(--font-size-xs); color: var(--color-text-secondary); flex: 1; }
+        .code-card__status { font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); }
+        .code-card__status--active { color: var(--c-success-700); }
+        .code-card__status--used { color: var(--color-text-secondary); }
+        .code-card__status--expired { color: var(--c-danger-500); }
+        .code-card__code { font-family: monospace; font-size: var(--font-size-lg); font-weight: 700; color: var(--c-purple); letter-spacing: 0.05em; background: var(--c-purple-ll); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); display: flex; justify-content: space-between; align-items: center; }
+        .code-card__copy { background: none; border: 1px solid var(--c-purple-l); border-radius: var(--radius-md); padding: var(--space-1) var(--space-3); font: inherit; font-size: var(--font-size-xs); cursor: pointer; color: var(--c-purple); }
+        .code-card__expires { font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-top: var(--space-2); }
+        .code-card--used, .code-card--expired { opacity: 0.5; }
+
+        .history-item { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid var(--color-border); font-size: var(--font-size-sm); }
+        .history-item:last-child { border-bottom: none; }
+
+        .renewal-bar { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-4); margin-top: var(--space-6); text-align: center; }
+        .renewal-bar__date { font-family: var(--font-display); font-size: var(--font-size-lg); font-weight: 700; }
+
+        .not-member { text-align: center; padding: var(--space-12) var(--space-4); }
+        .not-member__icon { font-size: 56px; margin-bottom: var(--space-4); }
+        .not-member__title { font-family: var(--font-display); font-size: var(--font-size-xl); font-weight: 700; margin-bottom: var(--space-2); }
+        .not-member__desc { color: var(--color-text-secondary); font-size: var(--font-size-sm); margin-bottom: var(--space-5); line-height: 1.7; }
     </style>
 </head>
 <body>
-    <main class="member-shell">
-        <div id="state-loading" class="loading-block" style="padding:var(--space-10);">
-            <div class="skeleton skeleton--stat" style="height:160px;margin-bottom:var(--space-4)"></div>
-            <div class="skeleton skeleton--block" style="height:100px;margin-bottom:var(--space-3)"></div>
-            <div class="skeleton skeleton--block" style="height:100px"></div>
+    <div class="mp">
+        <div class="mp-header">
+            <img src="assets/logo.svg" alt="Member Plus">
+            <div class="mp-header__store" id="store-name"></div>
         </div>
 
-        <div id="state-error" hidden>
-            <div class="empty"><div class="empty__icon">⚠️</div><div class="empty__title">تعذّر تحميل بيانات العضوية</div><p class="empty__body" id="err-body"></p><button class="btn btn--primary" id="err-retry">إعادة المحاولة</button></div>
+        <div id="state-loading">
+            <div class="skeleton skeleton--block" style="height:160px;border-radius:var(--radius-lg);margin-bottom:var(--space-4)"></div>
+            <div class="skeleton skeleton--block" style="height:60px;margin-bottom:var(--space-3)"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);"><div class="skeleton skeleton--block" style="height:80px"></div><div class="skeleton skeleton--block" style="height:80px"></div></div>
         </div>
-
-        <div id="state-nonmember" hidden>
-            <div class="empty">
-                <div class="empty__icon">🔍</div>
-                <div class="empty__title">لا يوجد عضوية نشطة</div>
-                <p class="empty__body">لم نجد عضوية مرتبطة بحسابك. يمكنك الانضمام الآن.</p>
-                <a class="btn btn--primary" id="join-link" href="#">الانضمام للعضوية</a>
-            </div>
-        </div>
-
+        <div id="state-error" hidden><div class="empty"><div class="empty__icon">⚠️</div><div class="empty__title">تعذّر تحميل العضوية</div><p class="empty__body" id="err-body"></p><button class="btn btn--primary" id="err-retry">إعادة المحاولة</button></div></div>
+        <div id="state-nonmember" hidden></div>
         <div id="state-data" hidden></div>
-    </main>
+    </div>
 
     <script src="app.js"></script>
     <script>
-        const storeId = new URLSearchParams(location.search).get('store');
-        const custId = new URLSearchParams(location.search).get('cid');
+        const params = new URLSearchParams(location.search);
+        const storeId = params.get('store') || params.get('store_id');
+        const custId = params.get('cid') || params.get('salla_customer_id');
 
-        function show(w) {
-            ['state-loading','state-error','state-nonmember','state-data'].forEach(id => {
-                document.getElementById(id).hidden = id !== w;
-            });
-        }
+        function show(w) { ['state-loading','state-error','state-nonmember','state-data'].forEach(id => { document.getElementById(id).hidden = id !== w; }); }
+        function fmtDate(d) { if (!d) return '—'; return new Date(d).toLocaleDateString('en-US', {year:'numeric', month:'long', day:'numeric'}); }
 
         document.getElementById('err-retry').addEventListener('click', load);
-        document.getElementById('join-link').href = `customer.html?store=${storeId || ''}`;
+
+        // Mock for demo
+        const MOCK = {
+            is_member: true, status: 'active', tier: 'gold',
+            plan_name_ar: 'الباقة الذهبية', plan_name_en: 'Gold',
+            discount_pct: '15', price: '99.00',
+            free_shipping_used: 2, free_shipping_quota: 4,
+            current_period_end: '2026-05-10T00:00:00',
+            total_saved_sar: '245.50', member_since: '2026-01-15T10:00:00',
+            gifts: [
+                {month:'2026-04', code:'GIFT-A8F2K3', status:'generated', desc_ar:'خصم 25% على جميع المنتجات', expires:'2026-04-30T23:59:59'},
+                {month:'2026-03', code:'GIFT-B7X1M9', status:'redeemed', desc_ar:'خصم 15% على الإكسسوارات', expires:'2026-03-31T23:59:59'},
+                {month:'2026-02', code:'GIFT-C4P2Q7', status:'expired', desc_ar:'خصم 20% على الكل', expires:'2026-02-28T23:59:59'},
+            ],
+            shipping: [
+                {month:'2026-04', code:'FS-H7J9K1', quota:4, used:2, status:'active'},
+                {month:'2026-03', code:'FS-D3E5F7', quota:4, used:4, status:'exhausted'},
+            ],
+            recent_savings: [
+                {type:'discount_applied', amount:'45.50', date:'2026-04-12T14:00:00'},
+                {type:'free_shipping_used', amount:'25.00', date:'2026-04-08T10:30:00'},
+                {type:'discount_applied', amount:'32.00', date:'2026-03-25T16:00:00'},
+                {type:'gift_redeemed', amount:'50.00', date:'2026-03-15T09:00:00'},
+            ],
+            subscription_history: [
+                {period:'April 2026', amount:'99.00', date:'2026-04-10T09:00:00', status:'paid', plan:'الذهبية'},
+                {period:'March 2026', amount:'99.00', date:'2026-03-10T09:00:00', status:'paid', plan:'الذهبية'},
+                {period:'February 2026', amount:'99.00', date:'2026-02-10T09:00:00', status:'paid', plan:'الذهبية'},
+                {period:'January 2026', amount:'49.00', date:'2026-01-15T09:00:00', status:'paid', plan:'الفضية', note:'أول اشتراك'},
+            ],
+        };
 
         async function load() {
             show('state-loading');
-            if (!storeId || !custId) {
-                document.getElementById('err-body').textContent = 'Missing ?store= or ?cid= parameter';
-                show('state-error');
-                return;
-            }
             try {
-                const data = await MP.api(
-                    `/api/v1/member/state?salla_customer_id=${encodeURIComponent(custId)}&store_id=${encodeURIComponent(storeId)}`
-                );
-                if (!data.is_member) {
+                let d;
+                if (storeId && custId) {
+                    try { d = await MP.api(`/api/v1/member/dashboard?store_id=${storeId}&salla_customer_id=${custId}`); } catch(_) { d = MOCK; }
+                } else { d = MOCK; }
+
+                if (!d.is_member) {
+                    document.getElementById('state-nonmember').innerHTML = `<div class="not-member">
+                        <div class="not-member__icon">💎</div>
+                        <div class="not-member__title">لست عضواً بعد</div>
+                        <div class="not-member__desc">${d.is_former_member ? 'كنت عضواً سابقاً ووفّرت ' + (d.total_saved||'0') + ' ر.س — يمكنك العودة!' : 'انضم لبرنامج العضوية واحصل على خصومات حصرية وشحن مجاني وهدايا شهرية.'}</div>
+                        ${storeId ? '<a class="btn btn--primary" href="customer.html?store='+storeId+'">الانضمام الآن</a>' : ''}
+                    </div>`;
                     show('state-nonmember');
                     return;
                 }
-                render(data);
+
+                render(d);
                 show('state-data');
             } catch (err) {
                 document.getElementById('err-body').textContent = MP.errorMessage(err, 'ar');
@@ -157,72 +148,136 @@
             }
         }
 
-        function render(data) {
-            const isGrace = data.status === 'grace_period';
-            const badgeClass = isGrace ? 'badge--grace' : (data.tier === 'gold' ? 'badge--gold' : 'badge--silver');
-            const badgeText = isGrace ? 'فترة سماح' : `${data.display_name_ar || data.tier} / ${data.display_name_en || data.tier}`;
+        function render(d) {
+            const tierClass = d.tier === 'gold' ? 'tier-hero--gold' : 'tier-hero--silver';
+            const tierIcon = d.tier === 'gold' ? '👑' : '💎';
+            const isCancelled = d.status === 'cancelled';
+            const statusText = isCancelled ? 'ملغاة — تنتهي ' + fmtDate(d.current_period_end) : 'عضوية نشطة';
+            const fsRemaining = Math.max(0, (d.free_shipping_quota||0) - (d.free_shipping_used||0));
 
-            const fmt = (d) => d ? new Date(d).toLocaleDateString('en-US') : '—';
-            const fsRemaining = data.free_shipping_remaining || 0;
-            const fsPct = data.free_shipping_quota ? Math.round((fsRemaining / (data.free_shipping_quota || 1)) * 100) : 0;
+            let h = '';
 
-            let html = '';
+            // Tier hero
+            h += `<div class="tier-hero ${isCancelled ? 'tier-hero--cancelled' : tierClass}">
+                <div class="tier-hero__icon">${tierIcon}</div>
+                <div class="tier-hero__name">${d.plan_name_ar || d.tier}</div>
+                <div class="tier-hero__status">${statusText}</div>
+                <div class="tier-hero__since">عضو منذ ${fmtDate(d.member_since)}</div>
+            </div>`;
 
-            // Header — PRD §9.4
-            html += `
-                <section class="member-header">
-                    <div class="member-header__badge ${badgeClass}">${badgeText}</div>
-                    <div class="member-header__name">${data.display_name_ar || ''} / ${data.display_name_en || ''}</div>
-                    <div class="member-header__renewal">التجديد: ${fmt(data.current_period_end)}</div>
-                    <div class="member-header__savings">وفّرت ${Number(data.total_saved_sar || 0).toLocaleString('en-US')} ر.س</div>
-                </section>`;
+            // Savings banner
+            h += `<div class="savings-banner">
+                <div>
+                    <div class="savings-banner__value">${Number(d.total_saved_sar || 0).toLocaleString('en-US')} ر.س</div>
+                    <div class="savings-banner__label">إجمالي ما وفّرته بعضويتك</div>
+                </div>
+            </div>`;
 
-            // Grace period CTA — PRD §9.4
-            if (isGrace) {
-                html += `
-                    <div class="grace-cta">
-                        ⚠️ فشل الدفع — يرجى تحديث بطاقتك خلال الأيام القادمة للحفاظ على مزاياك
-                    </div>`;
+            // Benefits grid
+            h += '<div class="benefits">';
+            h += `<div class="ben"><div class="ben__icon">🏷️</div><div class="ben__name">الخصم التلقائي</div><div class="ben__value">${d.discount_pct || 0}%</div></div>`;
+            h += `<div class="ben"><div class="ben__icon">🚚</div><div class="ben__name">الشحن المجاني</div><div class="ben__value">${fsRemaining} من ${d.free_shipping_quota||0}</div></div>`;
+
+            if (d.tier === 'gold') {
+                const activeGift = (d.gifts||[]).find(g => g.status === 'generated' || g.status === 'pending');
+                h += `<div class="ben"><div class="ben__icon">🎁</div><div class="ben__name">الهدية الشهرية</div><div class="ben__value">${activeGift ? 'متاحة' : 'مستخدمة'}</div></div>`;
+                h += `<div class="ben"><div class="ben__icon">⚡</div><div class="ben__name">الوصول المبكر</div><div class="ben__value">مفعّل</div></div>`;
+            } else {
+                h += `<div class="ben"><div class="ben__icon">⭐</div><div class="ben__name">شارة العضوية</div><div class="ben__value">مفعّلة</div></div>`;
+                h += `<div class="ben"><div class="ben__icon">💎</div><div class="ben__name">سعر الأعضاء</div><div class="ben__value">مفعّل</div></div>`;
+            }
+            h += '</div>';
+
+            // Active codes — shipping
+            const activeShipping = (d.shipping||[]).find(s => s.status === 'active');
+            if (activeShipping) {
+                h += '<div class="section-label">🚚 كود الشحن المجاني</div>';
+                h += `<div class="code-card code-card--active">
+                    <div class="code-card__top">
+                        <span class="code-card__label">استخدمته ${activeShipping.used} من ${activeShipping.quota} مرات</span>
+                        <span class="code-card__status code-card__status--active">نشط</span>
+                    </div>
+                    <div class="code-card__code">
+                        <span>${activeShipping.code}</span>
+                        <button class="code-card__copy" onclick="copyCode('${activeShipping.code}')">نسخ</button>
+                    </div>
+                    <div class="code-card__expires">أدخل هذا الكود عند الدفع للشحن المجاني</div>
+                </div>`;
             }
 
-            // Free shipping card — PRD §9.4
-            html += `
-                <section class="benefit-card">
-                    <div class="benefit-card__head">
-                        <div class="benefit-card__title">🚚 الشحن المجاني</div>
-                        <span class="pill pill--info">${fsRemaining} من ${data.free_shipping_quota || 0} متبقي</span>
-                    </div>
-                    <div class="benefit-card__bar"><div class="benefit-card__bar-fill" style="width:${fsPct}%"></div></div>
-                    <div class="benefit-card__meta">الرمز أدناه — أدخله عند الدفع للشحن المجاني</div>
-                    <div class="benefit-card__code" style="margin-top:var(--space-3);">
-                        <span>FS-XXXXX</span>
-                        <button class="btn btn--ghost" style="padding:var(--space-1) var(--space-3);font-size:var(--font-size-xs);"
-                                onclick="navigator.clipboard.writeText('FS-XXXXX'); MP.toast('تم النسخ', 'success');">نسخ</button>
-                    </div>
-                </section>`;
+            // Active codes — gift (Gold only)
+            if (d.gifts && d.gifts.length) {
+                h += '<div class="section-label">🎁 الهدايا الشهرية</div>';
+                const statusLabels = {generated:'متاحة', pending:'متاحة', redeemed:'مستخدمة', expired:'منتهية'};
+                const statusCls = {generated:'active', pending:'active', redeemed:'used', expired:'expired'};
 
-            // Auto discount info
-            html += `
-                <section class="benefit-card">
-                    <div class="benefit-card__head">
-                        <div class="benefit-card__title">🏷️ الخصم التلقائي</div>
-                        <span class="pill pill--success">${data.discount_pct || 0}%</span>
-                    </div>
-                    <div class="benefit-card__meta">يُطبَّق تلقائياً عند الدفع — لا حاجة لأي إجراء</div>
-                </section>`;
-
-            // Monthly gift (Gold only)
-            if (data.tier === 'gold') {
-                html += `
-                    <section class="benefit-card">
-                        <div class="benefit-card__head">
-                            <div class="benefit-card__title">🎁 الهدية الشهرية</div>
+                d.gifts.forEach(g => {
+                    const isActive = g.status === 'generated' || g.status === 'pending';
+                    h += `<div class="code-card ${isActive ? 'code-card--active' : 'code-card--' + g.status}">
+                        <div class="code-card__top">
+                            <span class="code-card__label">${g.desc_ar || g.month}</span>
+                            <span class="code-card__status code-card__status--${statusCls[g.status]||'expired'}">${statusLabels[g.status]||g.status}</span>
                         </div>
-                        <div class="benefit-card__meta">هديتك الشهرية — تحقق من لوحة التحكم لمعرفة التفاصيل</div>
-                    </section>`;
+                        <div class="code-card__code">
+                            <span>${g.code}</span>
+                            ${isActive ? '<button class="code-card__copy" onclick="copyCode(\''+g.code+'\')">نسخ</button>' : ''}
+                        </div>
+                        ${isActive && g.expires ? '<div class="code-card__expires">ينتهي ' + fmtDate(g.expires) + '</div>' : ''}
+                    </div>`;
+                });
             }
 
-            document.getElementById('state-data').innerHTML = html;
+            // Recent savings
+            if (d.recent_savings && d.recent_savings.length) {
+                h += '<div class="section-label">💰 سجل التوفير</div>';
+                h += '<div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:var(--space-4);">';
+                const labels = {discount_applied:'خصم تلقائي', free_shipping_used:'شحن مجاني', gift_redeemed:'هدية شهرية'};
+                d.recent_savings.forEach(s => {
+                    h += `<div class="history-item">
+                        <span style="flex:1;">${labels[s.type]||s.type}</span>
+                        <span style="color:var(--c-success-700);font-weight:var(--font-weight-semibold);">-${s.amount||'0'} ر.س</span>
+                        <span style="font-size:var(--font-size-xs);color:var(--color-text-secondary);">${fmtDate(s.date)}</span>
+                    </div>`;
+                });
+                h += '</div>';
+            }
+
+            // Subscription history
+            if (d.subscription_history && d.subscription_history.length) {
+                h += '<div class="section-label">💳 سجل الاشتراك</div>';
+                h += '<div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);overflow:hidden;">';
+                d.subscription_history.forEach((s, i) => {
+                    const statusIcon = s.status === 'paid' ? '✅' : '❌';
+                    const statusText = s.status === 'paid' ? 'مدفوع' : 'فشل';
+                    const statusColor = s.status === 'paid' ? 'var(--c-success-700)' : 'var(--c-danger-500)';
+                    h += `<div style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-4);${i < d.subscription_history.length - 1 ? 'border-bottom:1px solid var(--color-border);' : ''}">
+                        <span style="font-size:16px;">${statusIcon}</span>
+                        <div style="flex:1;">
+                            <div style="font-size:var(--font-size-sm);font-weight:var(--font-weight-medium);">${s.period}</div>
+                            <div style="font-size:var(--font-size-xs);color:var(--color-text-secondary);">${s.plan ? '<span style="background:' + (s.plan==='الذهبية'?'rgba(201,168,76,0.12)':'rgba(176,168,152,0.12)') + ';color:' + (s.plan==='الذهبية'?'#C9A84C':'#6B6560') + ';padding:1px 6px;border-radius:99px;font-size:11px;font-weight:600;">' + s.plan + '</span> · ' : ''}${fmtDate(s.date)}${s.note ? ' · ' + s.note : ''}</div>
+                        </div>
+                        <div style="text-align:left;">
+                            <div style="font-family:var(--font-display);font-weight:700;font-size:var(--font-size-sm);">${s.amount} ر.س</div>
+                            <div style="font-size:11px;color:${statusColor};">${statusText}</div>
+                        </div>
+                    </div>`;
+                });
+                h += '</div>';
+            }
+
+            // Renewal info
+            h += `<div class="renewal-bar">
+                <div style="font-size:var(--font-size-xs);color:var(--color-text-secondary);margin-bottom:var(--space-1);">التجديد القادم</div>
+                <div class="renewal-bar__date">${fmtDate(d.current_period_end)}</div>
+                <div style="font-size:var(--font-size-xs);color:var(--color-text-secondary);margin-top:var(--space-1);">${d.price} ر.س</div>
+            </div>`;
+
+            document.getElementById('state-data').innerHTML = h;
+        }
+
+        async function copyCode(code) {
+            try { await navigator.clipboard.writeText(code); MP.toast('تم نسخ الكود: ' + code, 'success'); }
+            catch(_) { MP.toast('فشل النسخ', 'danger'); }
         }
 
         load();

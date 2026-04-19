@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة الإدارة — Member Plus</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .admin-shell { display: flex; min-height: 100vh; }
+
+        /* Admin sidebar */
+        .admin-nav { width: 220px; background: #0E0E0E; color: #fff; position: fixed; top: 0; bottom: 0; inset-inline-end: 0; display: flex; flex-direction: column; z-index: 50; }
+        .admin-nav__header { padding: var(--space-5) var(--space-4); border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: var(--space-3); }
+        .admin-nav__header img { height: 24px; }
+        .admin-nav__header span { font-size: var(--font-size-sm); font-weight: 600; }
+        .admin-nav__badge { background: #BE52EF; color: #fff; font-size: 9px; font-weight: 700; padding: 2px 8px; border-radius: var(--radius-pill); margin-inline-start: auto; }
+        .admin-nav__links { flex: 1; padding: var(--space-3) 0; }
+        .admin-nav__link { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); color: rgba(255,255,255,0.5); font-size: var(--font-size-sm); cursor: pointer; border: none; background: none; width: 100%; text-align: start; font: inherit; transition: all 0.15s; position: relative; }
+        .admin-nav__link:hover { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.04); }
+        .admin-nav__link--active { color: #fff; background: rgba(190,82,239,0.12); }
+        .admin-nav__link--active::before { content: ''; position: absolute; inset-inline-start: 0; top: 50%; transform: translateY(-50%); width: 3px; height: 60%; background: #BE52EF; border-radius: 0 2px 2px 0; }
+        .admin-nav__link .icon { font-size: 14px; opacity: 0.7; width: 20px; text-align: center; }
+
+        .admin-main { flex: 1; margin-inline-end: 220px; padding: var(--space-6) var(--space-8); }
+        .admin-main__header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-6); }
+        .admin-main__title { font-family: var(--font-display); font-size: var(--font-size-xl); font-weight: 600; }
+
+        /* Stats */
+        .a-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-6); }
+        .a-stat { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-4) var(--space-5); }
+        .a-stat__value { font-family: var(--font-display); font-size: var(--font-size-2xl); font-weight: 700; }
+        .a-stat__label { font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-top: 2px; }
+        .a-stat__sub { font-size: 11px; color: var(--color-text-tertiary); margin-top: 4px; }
+
+        /* Tables */
+        .a-toolbar { display: flex; gap: var(--space-3); margin-bottom: var(--space-4); flex-wrap: wrap; align-items: center; }
+        .a-toolbar select, .a-toolbar input { font: inherit; font-size: var(--font-size-sm); padding: 8px var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
+        .a-toolbar input { flex: 1; min-width: 180px; }
+
+        .a-table { width: 100%; border-collapse: collapse; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; }
+        .a-table th { text-align: start; font-size: var(--font-size-xs); text-transform: uppercase; letter-spacing: var(--tracking-wide); color: var(--color-text-secondary); padding: var(--space-3) var(--space-4); background: var(--color-surface-muted); font-weight: 500; }
+        .a-table td { padding: var(--space-3) var(--space-4); border-top: 1px solid var(--color-border); font-size: var(--font-size-sm); }
+        .a-table tbody tr { transition: background 0.1s; cursor: pointer; }
+        .a-table tbody tr:hover { background: rgba(190,82,239,0.03); }
+
+        .s-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-inline-end: 6px; vertical-align: middle; }
+        .s-dot--active { background: #047857; }
+        .s-dot--trial { background: #C9A84C; }
+        .s-dot--suspended { background: #EF4444; }
+        .s-dot--cancelled { background: #999; }
+        .s-dot--expired { background: #999; }
+
+        .pp { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: var(--radius-pill); }
+        .pp--starter { background: var(--color-surface-muted); color: var(--color-text-secondary); }
+        .pp--pro { background: rgba(190,82,239,0.08); color: #BE52EF; }
+        .pp--unlimited { background: rgba(201,168,76,0.08); color: #C9A84C; }
+
+        /* Detail panel */
+        .dp-overlay { position: fixed; inset: 0; background: rgba(14,14,14,0.5); z-index: 99; backdrop-filter: blur(4px); }
+        .dp { position: fixed; top: 0; bottom: 0; inset-inline-start: 0; width: 500px; background: var(--color-surface); z-index: 100; overflow-y: auto; box-shadow: 0 0 60px rgba(0,0,0,0.15); transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.16,1,0.3,1); }
+        [dir="rtl"] .dp { transform: translateX(100%); }
+        .dp.is-open { transform: translateX(0); }
+        @media (max-width: 540px) { .dp { width: 100%; } }
+        .dp__head { padding: var(--space-6); border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: flex-start; }
+        .dp__close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--color-text-secondary); }
+        .dp__body { padding: var(--space-5) var(--space-6); }
+        .dp__section { margin-bottom: var(--space-5); }
+        .dp__stitle { font-size: var(--font-size-xs); text-transform: uppercase; letter-spacing: var(--tracking-wide); color: var(--color-text-secondary); margin-bottom: var(--space-3); font-weight: 500; }
+        .dp__row { display: flex; justify-content: space-between; padding: 6px 0; font-size: var(--font-size-sm); }
+        .dp__row-l { color: var(--color-text-secondary); }
+        .dp__row-v { font-weight: 600; }
+
+        /* Plan cards */
+        .plan-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); margin-bottom: var(--space-6); }
+        @media (max-width: 700px) { .plan-cards { grid-template-columns: 1fr; } }
+        .plan-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-5); text-align: center; }
+        .plan-card__name { font-family: var(--font-display); font-size: var(--font-size-lg); font-weight: 700; margin-bottom: var(--space-2); }
+        .plan-card__price { font-family: var(--font-display); font-size: var(--font-size-2xl); font-weight: 700; color: #BE52EF; }
+        .plan-card__row { display: flex; justify-content: space-between; font-size: var(--font-size-xs); padding: 6px 0; border-top: 1px solid var(--color-border); margin-top: var(--space-3); color: var(--color-text-secondary); }
+        .plan-card__row span:last-child { font-weight: 600; color: var(--color-text-primary); }
+
+        /* Email type pills */
+        .etype { font-size: 11px; padding: 2px 8px; border-radius: var(--radius-pill); font-weight: 500; }
+        .etype--merchant { background: rgba(190,82,239,0.08); color: #BE52EF; }
+        .etype--member { background: rgba(201,168,76,0.08); color: #C9A84C; }
+
+        /* Section visibility */
+        .admin-section { display: none; }
+        .admin-section.is-active { display: block; }
+
+        @media (max-width: 860px) {
+            .admin-nav { width: 60px; }
+            .admin-nav__header span, .admin-nav__badge { display: none; }
+            .admin-nav__link { justify-content: center; padding: var(--space-3); }
+            .admin-nav__link span:not(.icon) { display: none; }
+            .admin-main { margin-inline-end: 60px; padding: var(--space-4); }
+        }
+        /* Login */
+        .login-shell { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--color-bg); padding: var(--space-6); }
+        .login-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: var(--space-10) var(--space-8); max-width: 400px; width: 100%; box-shadow: 0 16px 48px rgba(0,0,0,0.08); text-align: center; }
+        .login-card__logo { font-size: 40px; margin-bottom: var(--space-4); }
+        .login-card__title { font-family: var(--font-display); font-size: var(--font-size-xl); font-weight: 700; margin-bottom: var(--space-2); }
+        .login-card__sub { font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: var(--space-6); }
+        .login-card .field { text-align: start; }
+        .login-error { color: #EF4444; font-size: var(--font-size-sm); margin-bottom: var(--space-3); display: none; }
+
+        /* Admin user bar */
+        .admin-user { padding: var(--space-4); border-top: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: var(--space-3); }
+        .admin-user__email { font-size: 11px; color: rgba(255,255,255,0.5); flex: 1; overflow: hidden; text-overflow: ellipsis; }
+        .admin-user__logout { background: none; border: none; color: rgba(255,255,255,0.4); cursor: pointer; font-size: 14px; padding: var(--space-1); }
+        .admin-user__logout:hover { color: #EF4444; }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div class="login-shell" id="login-screen">
+        <div class="login-card">
+            <div class="login-card__logo">💎</div>
+            <div class="login-card__title" id="login-title">لوحة الإدارة</div>
+            <div class="login-card__sub" id="login-sub">سجّل الدخول للوصول إلى لوحة إدارة Member Plus</div>
+            <div class="login-error" id="login-error"></div>
+            <div class="field"><label for="login-email" id="lbl-email">البريد الإلكتروني</label><input class="input" type="email" id="login-email" placeholder="admin@memberplus.sa" dir="ltr"></div>
+            <div class="field"><label for="login-pass" id="lbl-pass">كلمة المرور</label><input class="input" type="password" id="login-pass" placeholder="••••••••" dir="ltr"></div>
+            <button class="btn btn--primary btn--block" id="login-btn" style="margin-top:var(--space-4);" id="login-submit">تسجيل الدخول</button>
+            <div style="margin-top:var(--space-4);"><button style="background:none;border:none;color:var(--color-text-secondary);font-size:var(--font-size-xs);cursor:pointer;" onclick="toggleLoginLang()" id="lang-toggle">English</button></div>
+        </div>
+    </div>
+
+    <!-- Admin Panel (hidden until logged in) -->
+    <div class="admin-shell" id="admin-panel" style="display:none;">
+        <nav class="admin-nav">
+            <div class="admin-nav__header">
+                <img src="assets/logo.svg" alt="">
+                <span>Member Plus</span>
+                <span class="admin-nav__badge">ADMIN</span>
+            </div>
+            <div class="admin-nav__links">
+                <button class="admin-nav__link admin-nav__link--active" data-section="overview"><span class="icon">📊</span><span>نظرة عامة</span></button>
+                <button class="admin-nav__link" data-section="subscriptions"><span class="icon">🔄</span><span>الاشتراكات</span></button>
+                <button class="admin-nav__link" data-section="merchants"><span class="icon">🏪</span><span>التجار</span></button>
+                <button class="admin-nav__link" data-section="members"><span class="icon">👥</span><span>الأعضاء</span></button>
+                <button class="admin-nav__link" data-section="plans"><span class="icon">💎</span><span>الباقات</span></button>
+                <button class="admin-nav__link" data-section="emails"><span class="icon">✉️</span><span>الإشعارات</span></button>
+            </div>
+            <div class="admin-user">
+                <span class="admin-user__email" id="admin-email">—</span>
+                <button class="admin-user__logout" onclick="adminLogout()" title="تسجيل خروج">⎋</button>
+            </div>
+        </nav>
+
+        <main class="admin-main">
+            <!-- ═══ Overview ═══ -->
+            <div class="admin-section is-active" id="sec-overview">
+                <div class="admin-main__header"><div class="admin-main__title">نظرة عامة على المنصة</div></div>
+                <div id="ov-loading"><div class="a-stats"><div class="skeleton skeleton--block" style="height:90px"></div><div class="skeleton skeleton--block" style="height:90px"></div><div class="skeleton skeleton--block" style="height:90px"></div><div class="skeleton skeleton--block" style="height:90px"></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);margin-top:var(--space-4);"><div class="skeleton skeleton--block" style="height:250px"></div><div class="skeleton skeleton--block" style="height:250px"></div></div></div>
+                <div id="ov-content" style="display:none;">
+                    <div class="a-stats" id="ov-stats"></div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);margin-bottom:var(--space-5);" id="ov-charts"></div>
+                    <div id="ov-insights"></div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--space-4);margin-top:var(--space-5);" id="ov-breakdown"></div>
+                </div>
+            </div>
+
+            <!-- ═══ Merchants ═══ -->
+            <!-- ═══ Subscriptions ═══ -->
+            <div class="admin-section" id="sec-subscriptions">
+                <div class="admin-main__header"><div class="admin-main__title">إدارة الاشتراكات</div></div>
+                <div class="a-stats" id="sub-stats"></div>
+                <div style="display:flex;gap:0;margin-bottom:var(--space-4);border-bottom:2px solid var(--color-border);">
+                    <button class="admin-nav__link admin-nav__link--active" id="sub-tab-merchants" onclick="switchSubTab('merchants')" style="padding:var(--space-3) var(--space-5);border-radius:0;color:var(--color-text-primary);background:transparent;border-bottom:2px solid #BE52EF;margin-bottom:-2px;">اشتراكات التجار</button>
+                    <button class="admin-nav__link" id="sub-tab-members" onclick="switchSubTab('members')" style="padding:var(--space-3) var(--space-5);border-radius:0;color:var(--color-text-secondary);background:transparent;">اشتراكات الأعضاء</button>
+                </div>
+                <div id="sub-merchants-view">
+                    <div class="a-toolbar">
+                        <select id="sf-mstatus"><option value="">كل الحالات</option><option value="active">نشط</option><option value="trial">تجربة</option><option value="suspended">معلّق</option><option value="cancelled">ملغى</option></select>
+                        <select id="sf-mplan"><option value="">كل الباقات</option><option value="starter">Starter</option><option value="pro">Pro</option><option value="unlimited">Unlimited</option></select>
+                        <input type="search" id="sf-msearch" placeholder="بحث...">
+                    </div>
+                    <div style="overflow-x:auto;"><table class="a-table"><thead><tr><th>المتجر</th><th>الباقة</th><th>الحالة</th><th>تاريخ البدء</th><th>التجديد</th><th>الأعضاء</th><th>آخر حدث</th></tr></thead><tbody id="sub-m-tbody"></tbody></table></div>
+                    <div class="pg-bar" id="sub-m-pg"></div>
+                </div>
+                <div id="sub-members-view" style="display:none;">
+                    <div class="a-toolbar">
+                        <select id="sf-mbstore"><option value="">كل المتاجر</option></select>
+                        <select id="sf-mbstatus"><option value="">كل الحالات</option><option value="active">نشط</option><option value="cancelled">ملغى</option><option value="expired">منتهي</option></select>
+                        <select id="sf-mbtier"><option value="">كل الباقات</option><option value="silver">فضية</option><option value="gold">ذهبية</option></select>
+                        <input type="search" id="sf-mbsearch" placeholder="بحث...">
+                    </div>
+                    <div style="overflow-x:auto;"><table class="a-table"><thead><tr><th>العميل</th><th>المتجر</th><th>الباقة</th><th>الحالة</th><th>السعر</th><th>التسجيل</th><th>إجمالي المدفوع</th></tr></thead><tbody id="sub-mb-tbody"></tbody></table></div>
+                    <div class="pg-bar" id="sub-mb-pg"></div>
+                </div>
+            </div>
+
+            <div class="admin-section" id="sec-merchants">
+                <div class="admin-main__header"><div class="admin-main__title">إدارة التجار</div></div>
+                <div class="a-toolbar">
+                    <select id="mf-status"><option value="">كل الحالات</option><option value="active">نشط</option><option value="trial">تجربة</option><option value="suspended">معلّق</option><option value="cancelled">ملغى</option></select>
+                    <select id="mf-plan"><option value="">كل الباقات</option><option value="starter">Starter</option><option value="pro">Pro</option><option value="unlimited">Unlimited</option></select>
+                    <input type="search" id="mf-search" placeholder="بحث باسم المتجر أو الرقم...">
+                </div>
+                <div style="overflow-x:auto;"><table class="a-table"><thead><tr><th>المتجر</th><th>الحالة</th><th>الباقة</th><th>الأعضاء</th><th>الإعداد</th><th>التسجيل</th></tr></thead><tbody id="m-tbody"></tbody></table></div>
+                <div class="pg-bar" id="m-pagination"></div>
+            </div>
+
+            <!-- ═══ Members ═══ -->
+            <div class="admin-section" id="sec-members">
+                <div class="admin-main__header"><div class="admin-main__title">جميع الأعضاء</div></div>
+                <div class="a-toolbar">
+                    <select id="mbf-store"><option value="">كل المتاجر</option></select>
+                    <select id="mbf-status"><option value="">كل الحالات</option><option value="active">نشط</option><option value="cancelled">ملغى</option><option value="expired">منتهي</option></select>
+                    <select id="mbf-tier"><option value="">كل الباقات</option><option value="silver">فضية</option><option value="gold">ذهبية</option></select>
+                    <input type="search" id="mbf-search" placeholder="بحث بالرقم أو اسم المتجر...">
+                </div>
+                <div style="overflow-x:auto;"><table class="a-table"><thead><tr><th>العميل</th><th>المتجر</th><th>الباقة</th><th>الحالة</th><th>السعر</th><th>التوفير</th><th>التسجيل</th></tr></thead><tbody id="mb-tbody"></tbody></table></div>
+                <div class="pg-bar" id="mb-pagination"></div>
+            </div>
+
+            <!-- ═══ Plans ═══ -->
+            <div class="admin-section" id="sec-plans">
+                <div class="admin-main__header"><div class="admin-main__title">باقات التطبيق</div></div>
+                <div class="plan-cards" id="plan-cards"></div>
+            </div>
+
+            <!-- ═══ Emails ═══ -->
+            <div class="admin-section" id="sec-emails">
+                <div class="admin-main__header"><div class="admin-main__title">سجل الإشعارات</div></div>
+                <div class="a-toolbar">
+                    <select id="ef-type"><option value="">كل الأنواع</option><option value="merchant.welcome">ترحيب تاجر</option><option value="merchant.new_member">عضو جديد</option><option value="merchant.payment_failed">فشل دفع</option><option value="merchant.trial_ending">انتهاء تجربة</option><option value="merchant.customer_interest">اهتمام عميل</option><option value="member.welcome">ترحيب عضو</option><option value="member.gift_ready">هدية جاهزة</option><option value="member.renewal_reminder">تذكير تجديد</option><option value="member.payment_failed">فشل دفع عضو</option><option value="member.cancelled">إلغاء عضو</option></select>
+                    <input type="search" id="ef-search" placeholder="بحث بالبريد أو الموضوع...">
+                </div>
+                <div style="overflow-x:auto;"><table class="a-table"><thead><tr><th>النوع</th><th>المستلم</th><th>الموضوع</th><th>الحالة</th><th>التاريخ</th></tr></thead><tbody id="e-tbody"></tbody></table></div>
+                <div class="pg-bar" id="e-pagination"></div>
+            </div>
+        </main>
+    </div>
+
+    <div id="detail-container"></div>
+
+    <script src="app.js"></script>
+    <script>
+        function fmtDate(d) { if (!d) return '—'; return new Date(d).toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'}); }
+        const sLabels = {active:'نشط',trial:'تجربة',suspended:'معلّق',cancelled:'ملغى',expired:'منتهي'};
+
+        // ═══ Auth ═══
+        let adminToken = localStorage.getItem('admin_token');
+        let loginLang = 'ar';
+
+        const loginText = {
+            ar: {title:'لوحة الإدارة', sub:'سجّل الدخول للوصول إلى لوحة إدارة Member Plus', email:'البريد الإلكتروني', pass:'كلمة المرور', btn:'تسجيل الدخول', toggle:'English', errRequired:'يرجى إدخال البريد وكلمة المرور', errInvalid:'بريد أو كلمة مرور غير صحيحة'},
+            en: {title:'Admin Panel', sub:'Sign in to access the Member Plus admin dashboard', email:'Email', pass:'Password', btn:'Sign In', toggle:'العربية', errRequired:'Email and password are required', errInvalid:'Invalid email or password'},
+        };
+
+        function toggleLoginLang() {
+            loginLang = loginLang === 'ar' ? 'en' : 'ar';
+            const t = loginText[loginLang];
+            document.getElementById('login-title').textContent = t.title;
+            document.getElementById('login-sub').textContent = t.sub;
+            document.getElementById('lbl-email').textContent = t.email;
+            document.getElementById('lbl-pass').textContent = t.pass;
+            document.getElementById('login-btn').textContent = t.btn;
+            document.getElementById('lang-toggle').textContent = t.toggle;
+            document.documentElement.dir = loginLang === 'ar' ? 'rtl' : 'ltr';
+            document.documentElement.lang = loginLang;
+        }
+
+        // Override MP.api to inject admin token
+        const _origApi = MP.api;
+        MP.api = function(path, opts = {}) {
+            if (adminToken && path.includes('/admin/')) {
+                opts.headers = {...(opts.headers||{}), 'Authorization': 'Bearer ' + adminToken};
+            }
+            return _origApi(path, opts);
+        };
+
+        document.getElementById('login-btn').addEventListener('click', doLogin);
+        document.getElementById('login-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
+
+        async function doLogin() {
+            const t = loginText[loginLang];
+            const email = document.getElementById('login-email').value.trim();
+            const pass = document.getElementById('login-pass').value;
+            const errEl = document.getElementById('login-error');
+
+            if (!email || !pass) { errEl.textContent = t.errRequired; errEl.style.display = 'block'; return; }
+            errEl.style.display = 'none';
+
+            const btn = document.getElementById('login-btn');
+            MP.setLoading(btn, true);
+            try {
+                const res = await _origApi('/api/v1/admin/login', {
+                    method: 'POST',
+                    body: JSON.stringify({email, password: pass}),
+                });
+                adminToken = res.token;
+                localStorage.setItem('admin_token', adminToken);
+                showAdminPanel(res.email);
+            } catch (err) {
+                errEl.textContent = t.errInvalid;
+                errEl.style.display = 'block';
+            } finally {
+                MP.setLoading(btn, false);
+            }
+        }
+
+        async function checkAuth() {
+            if (!adminToken) { showLoginScreen(); return; }
+            try {
+                const me = await _origApi('/api/v1/admin/me', {headers: {'Authorization': 'Bearer ' + adminToken}});
+                showAdminPanel(me.email);
+            } catch(_) {
+                localStorage.removeItem('admin_token');
+                adminToken = null;
+                showLoginScreen();
+            }
+        }
+
+        function showLoginScreen() {
+            document.getElementById('login-screen').style.display = 'flex';
+            document.getElementById('admin-panel').style.display = 'none';
+        }
+
+        function showAdminPanel(email) {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('admin-panel').style.display = 'flex';
+            document.getElementById('admin-email').textContent = email;
+            loadOverview();
+        }
+
+        async function adminLogout() {
+            try { await _origApi('/api/v1/admin/logout', {method:'POST', headers:{'Authorization':'Bearer '+adminToken}}); } catch(_) {}
+            localStorage.removeItem('admin_token');
+            adminToken = null;
+            showLoginScreen();
+        }
+
+        // ═══ Navigation ═══
+        let currentSection = 'overview';
+        document.querySelectorAll('.admin-nav__link').forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentSection = btn.dataset.section;
+                document.querySelectorAll('.admin-nav__link').forEach(b => b.classList.remove('admin-nav__link--active'));
+                btn.classList.add('admin-nav__link--active');
+                document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('is-active'));
+                document.getElementById('sec-' + currentSection).classList.add('is-active');
+                if (currentSection === 'overview') loadOverview();
+                else if (currentSection === 'subscriptions') loadSubscriptions();
+                else if (currentSection === 'merchants') loadMerchants();
+                else if (currentSection === 'members') loadMembers();
+                else if (currentSection === 'plans') loadPlans();
+                else if (currentSection === 'emails') loadEmails();
+            });
+        });
+
+        // ═══ Overview ═══
+        async function loadOverview() {
+            try {
+                const [s, plansData] = await Promise.all([
+                    MP.api('/api/v1/admin/stats'),
+                    MP.api('/api/v1/admin/plans-summary'),
+                ]);
+                const plans = plansData.plans || [];
+                const totalAppRevenue = plans.reduce((sum, p) => sum + (p.app_revenue||0), 0);
+                const totalMemberRevenue = plans.reduce((sum, p) => sum + (p.total_revenue||0), 0);
+
+                // KPI cards
+                document.getElementById('ov-stats').innerHTML = `
+                    <div class="a-stat"><div class="a-stat__value" style="color:#BE52EF;">${s.merchants.total}</div><div class="a-stat__label">إجمالي التجار</div></div>
+                    <div class="a-stat"><div class="a-stat__value" style="color:#047857;">${s.merchants.active}</div><div class="a-stat__label">نشط</div></div>
+                    <div class="a-stat"><div class="a-stat__value" style="color:#C9A84C;">${s.merchants.trial}</div><div class="a-stat__label">تجربة</div></div>
+                    <div class="a-stat"><div class="a-stat__value">${s.members.active}</div><div class="a-stat__label">أعضاء نشطين</div><div class="a-stat__sub">من ${s.members.total} إجمالي</div></div>
+                    <div class="a-stat"><div class="a-stat__value" style="color:#047857;">${totalAppRevenue.toLocaleString('en-US')}</div><div class="a-stat__label">إيراد التطبيق (ر.س)</div><div class="a-stat__sub">شهري من اشتراكات التجار</div></div>
+                    <div class="a-stat"><div class="a-stat__value" style="color:#BE52EF;">${s.revenue.mrr.toLocaleString('en-US')}</div><div class="a-stat__label">إيراد الأعضاء (ر.س)</div><div class="a-stat__sub">اشتراكات العملاء</div></div>`;
+
+                // Charts
+                const merchantTotal = s.merchants.total || 1;
+                const activeP = Math.round(s.merchants.active / merchantTotal * 100);
+                const trialP = Math.round(s.merchants.trial / merchantTotal * 100);
+                const suspP = Math.round(s.merchants.suspended / merchantTotal * 100);
+                const cancP = 100 - activeP - trialP - suspP;
+
+                // Mock growth data
+                const growth = [{m:'Nov',v:2},{m:'Dec',v:3},{m:'Jan',v:5},{m:'Feb',v:7},{m:'Mar',v:9},{m:'Apr',v:s.merchants.total}];
+                const maxG = Math.max(...growth.map(g=>g.v), 1);
+
+                document.getElementById('ov-charts').innerHTML = `
+                    <div class="a-stat" style="padding:var(--space-5);">
+                        <div style="font-size:var(--font-size-xs);text-transform:uppercase;letter-spacing:var(--tracking-wide);color:var(--color-text-secondary);margin-bottom:var(--space-4);">توزيع حالات التجار</div>
+                        <div style="display:flex;height:28px;border-radius:var(--radius-md);overflow:hidden;margin-bottom:var(--space-3);">
+                            ${activeP > 0 ? '<div style="width:'+activeP+'%;background:#047857;min-width:20px;"></div>' : ''}
+                            ${trialP > 0 ? '<div style="width:'+trialP+'%;background:#C9A84C;min-width:20px;"></div>' : ''}
+                            ${suspP > 0 ? '<div style="width:'+suspP+'%;background:#EF4444;min-width:20px;"></div>' : ''}
+                            ${cancP > 0 ? '<div style="width:'+cancP+'%;background:#ccc;min-width:20px;"></div>' : ''}
+                        </div>
+                        <div style="display:flex;gap:var(--space-4);flex-wrap:wrap;font-size:var(--font-size-xs);color:var(--color-text-secondary);">
+                            <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#047857;margin-inline-end:4px;vertical-align:middle;"></span>نشط ${s.merchants.active}</span>
+                            <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#C9A84C;margin-inline-end:4px;vertical-align:middle;"></span>تجربة ${s.merchants.trial}</span>
+                            <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#EF4444;margin-inline-end:4px;vertical-align:middle;"></span>معلّق ${s.merchants.suspended}</span>
+                            <span><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:#ccc;margin-inline-end:4px;vertical-align:middle;"></span>ملغى ${s.merchants.cancelled}</span>
+                        </div>
+                        <div style="margin-top:var(--space-5);">
+                            <div style="font-size:var(--font-size-xs);text-transform:uppercase;letter-spacing:var(--tracking-wide);color:var(--color-text-secondary);margin-bottom:var(--space-3);">توزيع الباقات</div>
+                            ${plans.map(p => {
+                                const pct = Math.round(p.merchant_count / merchantTotal * 100);
+                                return '<div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-2);"><span style="font-size:var(--font-size-xs);width:70px;">' + p.name + '</span><div style="flex:1;height:20px;background:var(--color-surface-muted);border-radius:var(--radius-md);overflow:hidden;"><div style="height:100%;width:' + pct + '%;background:#BE52EF;border-radius:var(--radius-md);min-width:4px;"></div></div><span style="font-size:var(--font-size-xs);font-weight:600;width:40px;text-align:left;">' + p.merchant_count + '</span></div>';
+                            }).join('')}
+                        </div>
+                    </div>
+                    <div class="a-stat" style="padding:var(--space-5);">
+                        <div style="font-size:var(--font-size-xs);text-transform:uppercase;letter-spacing:var(--tracking-wide);color:var(--color-text-secondary);margin-bottom:var(--space-4);">نمو التجار (6 أشهر)</div>
+                        <div style="display:flex;align-items:flex-end;gap:var(--space-2);height:140px;">
+                            ${growth.map(g => {
+                                const pct = Math.round(g.v / maxG * 100);
+                                return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;"><div style="font-size:11px;font-weight:600;">' + g.v + '</div><div style="width:100%;background:#BE52EF;border-radius:4px 4px 0 0;height:' + pct + '%;min-height:4px;"></div><div style="font-size:11px;color:var(--color-text-secondary);">' + g.m + '</div></div>';
+                            }).join('')}
+                        </div>
+                    </div>`;
+
+                // Insights
+                const insights = [];
+                if (s.merchants.trial > 0) insights.push({icon:'⏰', style:'warning', text: s.merchants.trial + ' تاجر في فترة تجربة — تابع تحويلهم لاشتراكات فعلية.'});
+                if (s.merchants.suspended > 0) insights.push({icon:'⚠️', style:'danger', text: s.merchants.suspended + ' تاجر معلّق — تحقق من حالات فشل الدفع.'});
+                if (s.members.active > 0 && s.revenue.mrr > 0) {
+                    const avgRev = Math.round(s.revenue.mrr / s.members.active);
+                    insights.push({icon:'💰', style:'info', text: 'متوسط الإيراد لكل عضو: ' + avgRev + ' ر.س/شهر.'});
+                }
+                if (s.merchants.active > 0 && s.members.active > 0) {
+                    const avgMembers = Math.round(s.members.active / s.merchants.active * 10) / 10;
+                    insights.push({icon:'📊', style:'info', text: 'متوسط الأعضاء لكل تاجر نشط: ' + avgMembers + ' عضو.'});
+                }
+
+                document.getElementById('ov-insights').innerHTML = insights.length ? insights.map(i =>
+                    '<div style="display:flex;align-items:flex-start;gap:var(--space-3);padding:var(--space-3) var(--space-4);background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);margin-bottom:var(--space-2);font-size:var(--font-size-sm);border-inline-start:3px solid ' + (i.style==='danger'?'#EF4444':i.style==='warning'?'#C9A84C':'#BE52EF') + ';"><span style="font-size:16px;flex-shrink:0;">' + i.icon + '</span><span style="line-height:1.6;">' + i.text + '</span></div>'
+                ).join('') : '';
+
+                // Plan breakdown cards
+                document.getElementById('ov-breakdown').innerHTML = plans.map(p =>
+                    '<div class="a-stat" style="padding:var(--space-5);"><div style="font-size:var(--font-size-lg);font-weight:700;margin-bottom:var(--space-3);">' + p.name + '</div><div style="font-family:var(--font-display);font-size:var(--font-size-2xl);font-weight:700;color:#BE52EF;margin-bottom:var(--space-3);">' + p.price + ' <span style="font-size:var(--font-size-xs);color:var(--color-text-secondary);font-weight:400;">ر.س/شهر</span></div><div style="font-size:var(--font-size-xs);color:var(--color-text-secondary);display:flex;flex-direction:column;gap:6px;"><div style="display:flex;justify-content:space-between;"><span>التجار</span><span style="font-weight:600;color:var(--color-text-primary);">' + p.merchant_count + '</span></div><div style="display:flex;justify-content:space-between;"><span>الأعضاء</span><span style="font-weight:600;color:var(--color-text-primary);">' + p.total_members + '</span></div><div style="display:flex;justify-content:space-between;"><span>حد الأعضاء</span><span style="font-weight:600;color:var(--color-text-primary);">' + (p.member_limit || '∞') + '</span></div><div style="display:flex;justify-content:space-between;border-top:1px solid var(--color-border);padding-top:6px;margin-top:4px;"><span>إيراد التطبيق</span><span style="font-weight:600;color:#047857;">' + p.app_revenue + ' ر.س</span></div><div style="display:flex;justify-content:space-between;"><span>إيراد الأعضاء</span><span style="font-weight:600;color:#BE52EF;">' + p.total_revenue.toLocaleString('en-US') + ' ر.س</span></div></div></div>'
+                ).join('');
+
+                document.getElementById('ov-loading').style.display = 'none';
+                document.getElementById('ov-content').style.display = 'block';
+            } catch (_) {}
+        }
+
+        // ═══ Merchants ═══
+        let allMerchants = [];
+        const mPager = MP.Paginator({ perPage: 15, onChange(items) { renderMerchants(items); } });
+        document.getElementById('mf-status').addEventListener('change', filterMerchants);
+        document.getElementById('mf-plan').addEventListener('change', filterMerchants);
+        let mTimer; document.getElementById('mf-search').addEventListener('input', () => { clearTimeout(mTimer); mTimer = setTimeout(filterMerchants, 300); });
+
+        async function loadMerchants() {
+            try {
+                const data = await MP.api('/api/v1/admin/merchants?per_page=500');
+                allMerchants = data.merchants || [];
+                filterMerchants();
+            } catch(_) {}
+        }
+        function filterMerchants() {
+            let f = allMerchants;
+            const status = document.getElementById('mf-status').value;
+            const plan = document.getElementById('mf-plan').value;
+            const search = (document.getElementById('mf-search').value||'').trim().toLowerCase();
+            if (status) f = f.filter(m => m.status === status);
+            if (plan) f = f.filter(m => m.our_plan === plan);
+            if (search) f = f.filter(m => (m.store_name||'').toLowerCase().includes(search) || String(m.salla_store_id).includes(search));
+            mPager.setItems(f);
+            renderMerchants(mPager.getPage());
+            mPager.render(document.getElementById('m-pagination'));
+        }
+        function renderMerchants(rows) {
+            document.getElementById('m-tbody').innerHTML = rows.length ? rows.map(m => `<tr onclick="openMerchant('${m.id}')">
+                <td><strong>${m.store_name||'—'}</strong><div style="font-size:11px;color:var(--color-text-secondary);">#${m.salla_store_id}</div></td>
+                <td><span class="s-dot s-dot--${m.status}"></span>${sLabels[m.status]||m.status}</td>
+                <td><span class="pp pp--${m.our_plan||'starter'}">${m.our_plan||'—'}</span></td>
+                <td style="font-weight:600;">${m.member_count}</td>
+                <td>${m.setup_completed?'<span style="color:#047857;">✓</span>':'—'}</td>
+                <td style="font-size:var(--font-size-xs);color:var(--color-text-secondary);">${fmtDate(m.created_at)}</td>
+            </tr>`).join('') : '<tr><td colspan="6" style="text-align:center;padding:var(--space-8);color:var(--color-text-secondary);">لا يوجد تجار</td></tr>';
+        }
+
+        // ═══ Members ═══
+        let allMembers = [];
+        const mbPager = MP.Paginator({ perPage: 15, onChange(items) { renderMembers(items); } });
+        document.getElementById('mbf-store').addEventListener('change', filterMembers);
+        document.getElementById('mbf-status').addEventListener('change', filterMembers);
+        document.getElementById('mbf-tier').addEventListener('change', filterMembers);
+        let mbTimer; document.getElementById('mbf-search').addEventListener('input', () => { clearTimeout(mbTimer); mbTimer = setTimeout(filterMembers, 300); });
+
+        async function loadMembers() {
+            try {
+                const data = await MP.api('/api/v1/admin/members?per_page=500');
+                allMembers = data.members || [];
+                // Populate store dropdown
+                const stores = new Map();
+                allMembers.forEach(m => { if (m.store_name && !stores.has(m.merchant_id)) stores.set(m.merchant_id, m.store_name); });
+                const storeSelect = document.getElementById('mbf-store');
+                storeSelect.innerHTML = '<option value="">كل المتاجر</option>';
+                stores.forEach((name, id) => { storeSelect.innerHTML += '<option value="' + id + '">' + name + '</option>'; });
+                filterMembers();
+            } catch(_) {}
+        }
+        function filterMembers() {
+            let f = allMembers;
+            const store = document.getElementById('mbf-store').value;
+            const status = document.getElementById('mbf-status').value;
+            const tier = document.getElementById('mbf-tier').value;
+            const search = (document.getElementById('mbf-search').value||'').trim().toLowerCase();
+            if (store) f = f.filter(m => m.merchant_id === store);
+            if (status) f = f.filter(m => m.status === status);
+            if (tier) f = f.filter(m => m.tier === tier);
+            if (search) f = f.filter(m => String(m.salla_customer_id).includes(search) || (m.store_name||'').toLowerCase().includes(search));
+            mbPager.setItems(f);
+            renderMembers(mbPager.getPage());
+            mbPager.render(document.getElementById('mb-pagination'));
+        }
+        function renderMembers(rows) {
+            document.getElementById('mb-tbody').innerHTML = rows.length ? rows.map(m => `<tr>
+                <td style="font-weight:600;">#${m.salla_customer_id}</td>
+                <td>${m.store_name||'—'}</td>
+                <td><span class="pp pp--${m.tier==='gold'?'unlimited':'starter'}">${m.tier==='gold'?'ذهبية':'فضية'}</span></td>
+                <td><span class="s-dot s-dot--${m.status}"></span>${sLabels[m.status]||m.status}</td>
+                <td>${m.price} ر.س</td>
+                <td style="color:#BE52EF;font-weight:600;">${m.total_saved} ر.س</td>
+                <td style="font-size:var(--font-size-xs);color:var(--color-text-secondary);">${fmtDate(m.created_at)}</td>
+            </tr>`).join('') : '<tr><td colspan="7" style="text-align:center;padding:var(--space-8);color:var(--color-text-secondary);">لا يوجد أعضاء</td></tr>';
+        }
+
+        // ═══ Plans ═══
+        async function loadPlans() {
+            try {
+                const data = await MP.api('/api/v1/admin/plans-summary');
+                document.getElementById('plan-cards').innerHTML = (data.plans||[]).map(p => `<div class="plan-card">
+                    <div class="plan-card__name">${p.name}</div>
+                    <div class="plan-card__price">${p.price} <span style="font-size:var(--font-size-sm);color:var(--color-text-secondary);font-weight:400;">ر.س/شهر</span></div>
+                    <div class="plan-card__row"><span>التجار</span><span>${p.merchant_count}</span></div>
+                    <div class="plan-card__row"><span>الأعضاء</span><span>${p.total_members}</span></div>
+                    <div class="plan-card__row"><span>حد الأعضاء</span><span>${p.member_limit||'∞'}</span></div>
+                    <div class="plan-card__row"><span>إيراد التطبيق</span><span style="color:#047857;">${p.app_revenue} ر.س</span></div>
+                    <div class="plan-card__row"><span>إيراد الأعضاء</span><span style="color:#BE52EF;">${p.total_revenue} ر.س</span></div>
+                </div>`).join('');
+            } catch(_) {}
+        }
+
+        // ═══ Emails ═══
+        let allEmails = [];
+        const ePager = MP.Paginator({ perPage: 20, onChange(items) { renderEmails(items); } });
+        document.getElementById('ef-type').addEventListener('change', filterEmails);
+        let eTimer; document.getElementById('ef-search').addEventListener('input', () => { clearTimeout(eTimer); eTimer = setTimeout(filterEmails, 300); });
+
+        async function loadEmails() {
+            try {
+                const data = await MP.api('/api/v1/admin/emails?per_page=500');
+                allEmails = data.emails || [];
+                filterEmails();
+            } catch(_) {}
+        }
+        function filterEmails() {
+            let f = allEmails;
+            const type = document.getElementById('ef-type').value;
+            const search = (document.getElementById('ef-search').value||'').trim().toLowerCase();
+            if (type) f = f.filter(e => e.email_type === type);
+            if (search) f = f.filter(e => (e.recipient_email||'').toLowerCase().includes(search) || (e.subject||'').toLowerCase().includes(search));
+            ePager.setItems(f);
+            renderEmails(ePager.getPage());
+            ePager.render(document.getElementById('e-pagination'));
+        }
+        function renderEmails(rows) {
+            const typeLabels = {'merchant.welcome':'ترحيب تاجر','merchant.new_member':'عضو جديد','merchant.payment_failed':'فشل دفع','merchant.trial_ending':'انتهاء تجربة','merchant.setup_complete':'إكمال إعداد','merchant.customer_interest':'اهتمام عميل','merchant.monthly_report':'تقرير شهري','member.welcome':'ترحيب عضو','member.gift_ready':'هدية جاهزة','member.renewal_reminder':'تذكير تجديد','member.payment_failed':'فشل دفع عضو','member.cancelled':'إلغاء عضو'};
+            document.getElementById('e-tbody').innerHTML = rows.length ? rows.map(e => {
+                const isMerchant = e.email_type.startsWith('merchant.');
+                return `<tr>
+                    <td><span class="etype etype--${isMerchant?'merchant':'member'}">${typeLabels[e.email_type]||e.email_type}</span></td>
+                    <td style="font-size:var(--font-size-xs);direction:ltr;text-align:end;">${e.recipient_email}</td>
+                    <td>${e.subject||'—'}</td>
+                    <td><span class="s-dot s-dot--${e.status==='sent'?'active':'suspended'}"></span>${e.status}</td>
+                    <td style="font-size:var(--font-size-xs);color:var(--color-text-secondary);">${fmtDate(e.created_at)}</td>
+                </tr>`;
+            }).join('') : '<tr><td colspan="5" style="text-align:center;padding:var(--space-8);color:var(--color-text-secondary);">لا يوجد إشعارات</td></tr>';
+        }
+
+        // ═══ Merchant Detail Panel ═══
+        async function openMerchant(id) {
+            const c = document.getElementById('detail-container');
+            c.innerHTML = '<div class="dp-overlay" onclick="closeDetail()"></div><div class="dp"><div style="padding:var(--space-8);text-align:center;"><div class="spinner"></div></div></div>';
+            requestAnimationFrame(() => c.querySelector('.dp').classList.add('is-open'));
+            try {
+                const d = await MP.api('/api/v1/admin/merchants/' + id);
+                const m = d.merchant;
+                let h = `<div class="dp__head"><div><div style="font-size:var(--font-size-xl);font-weight:700;">${m.store_name||'—'}</div><div style="font-size:var(--font-size-xs);color:var(--color-text-secondary);margin-top:4px;">#${m.salla_store_id} · ${m.id.slice(0,8)}...</div></div><button class="dp__close" onclick="closeDetail()">✕</button></div><div class="dp__body">`;
+
+                h += `<div class="dp__section"><div class="dp__stitle">الحالة</div>
+                    <div class="dp__row"><span class="dp__row-l">الحالة</span><span class="dp__row-v"><span class="s-dot s-dot--${m.status}"></span>${sLabels[m.status]||m.status}</span></div>
+                    <div class="dp__row"><span class="dp__row-l">الباقة</span><span class="dp__row-v"><span class="pp pp--${m.our_plan||'starter'}">${m.our_plan||'—'}</span></span></div>
+                    <div class="dp__row"><span class="dp__row-l">الإعداد</span><span class="dp__row-v">${m.setup_completed?'مكتمل ✓':'غير مكتمل'}</span></div>
+                    <div class="dp__row"><span class="dp__row-l">التسجيل</span><span class="dp__row-v">${fmtDate(m.created_at)}</span></div>
+                    ${m.trial_ends_at?'<div class="dp__row"><span class="dp__row-l">نهاية التجربة</span><span class="dp__row-v">'+fmtDate(m.trial_ends_at)+'</span></div>':''}
+                </div>`;
+
+                h += `<div class="dp__section"><div class="dp__stitle">الإحصائيات</div>
+                    <div class="dp__row"><span class="dp__row-l">أعضاء نشطين</span><span class="dp__row-v" style="color:#BE52EF;">${d.stats.active_members}</span></div>
+                    <div class="dp__row"><span class="dp__row-l">إجمالي</span><span class="dp__row-v">${d.stats.total_members}</span></div>
+                    <div class="dp__row"><span class="dp__row-l">إيراد شهري</span><span class="dp__row-v" style="color:#047857;">${d.stats.monthly_revenue} ر.س</span></div>
+                </div>`;
+
+                if (d.plans.length) {
+                    h += '<div class="dp__section"><div class="dp__stitle">الباقات</div>';
+                    d.plans.forEach(p => h += `<div class="dp__row"><span class="dp__row-l">${p.name} (${p.tier})</span><span class="dp__row-v">${p.price} ر.س · ${p.discount}% · شحن ${p.shipping}</span></div>`);
+                    h += '</div>';
+                }
+
+                h += `<div class="dp__section"><div class="dp__stitle">إجراءات</div><div style="display:flex;gap:var(--space-2);">
+                    ${m.status!=='suspended'?'<button class="btn btn--danger" style="font-size:var(--font-size-xs);" onclick="suspendM(\''+id+'\')">تعليق</button>':''}
+                    ${m.status==='suspended'?'<button class="btn btn--primary" style="font-size:var(--font-size-xs);" onclick="reactivateM(\''+id+'\')">إعادة تفعيل</button>':''}
+                </div></div>`;
+
+                h += `<div class="dp__section"><div class="dp__stitle">ملاحظات</div>`;
+                d.admin_notes.forEach(n => h += `<div style="background:var(--color-surface-muted);border-radius:var(--radius-md);padding:var(--space-3);margin-bottom:var(--space-2);font-size:var(--font-size-sm);">${n.note}<div style="font-size:11px;color:var(--color-text-secondary);margin-top:4px;">${fmtDate(n.created_at)}</div></div>`);
+                h += `<div style="display:flex;gap:var(--space-2);margin-top:var(--space-3);"><input type="text" class="input" id="note-inp" placeholder="أضف ملاحظة..." style="flex:1;font-size:var(--font-size-sm);"><button class="btn btn--primary" style="font-size:var(--font-size-xs);" onclick="addNote('${id}')">إضافة</button></div></div>`;
+
+                h += '</div>';
+                c.querySelector('.dp').innerHTML = h;
+            } catch(_) { c.querySelector('.dp').innerHTML = '<div style="padding:var(--space-8);text-align:center;">⚠️ تعذّر التحميل</div>'; }
+        }
+
+        function closeDetail() { document.getElementById('detail-container').innerHTML = ''; }
+        async function suspendM(id) { await MP.api('/api/v1/admin/merchants/'+id+'/suspend',{method:'POST',body:'{}'}); MP.toast('تم التعليق','warning'); closeDetail(); loadMerchants(); }
+        async function reactivateM(id) { await MP.api('/api/v1/admin/merchants/'+id+'/reactivate',{method:'POST',body:'{}'}); MP.toast('تم التفعيل','success'); closeDetail(); loadMerchants(); }
+        async function addNote(id) { const n=document.getElementById('note-inp').value.trim(); if(!n)return; await MP.api('/api/v1/admin/merchants/'+id+'/notes',{method:'POST',body:JSON.stringify({note:n})}); MP.toast('تم الإضافة','success'); openMerchant(id); }
+
+        // ═══ Subscriptions ═══
+        let subMerchants = [], subMembers = [];
+        const subMPager = MP.Paginator({ perPage: 15, onChange(items) { renderSubMerchants(items); } });
+        const subMbPager = MP.Paginator({ perPage: 15, onChange(items) { renderSubMembers(items); } });
+
+        document.getElementById('sf-mstatus').addEventListener('change', filterSubMerchants);
+        document.getElementById('sf-mplan').addEventListener('change', filterSubMerchants);
+        let sfmT; document.getElementById('sf-msearch').addEventListener('input', () => { clearTimeout(sfmT); sfmT = setTimeout(filterSubMerchants, 300); });
+        document.getElementById('sf-mbstore').addEventListener('change', filterSubMembers);
+        document.getElementById('sf-mbstatus').addEventListener('change', filterSubMembers);
+        document.getElementById('sf-mbtier').addEventListener('change', filterSubMembers);
+        let sfmbT; document.getElementById('sf-mbsearch').addEventListener('input', () => { clearTimeout(sfmbT); sfmbT = setTimeout(filterSubMembers, 300); });
+
+        function switchSubTab(tab) {
+            document.getElementById('sub-merchants-view').style.display = tab === 'merchants' ? 'block' : 'none';
+            document.getElementById('sub-members-view').style.display = tab === 'members' ? 'block' : 'none';
+            document.getElementById('sub-tab-merchants').style.borderBottom = tab === 'merchants' ? '2px solid #BE52EF' : 'none';
+            document.getElementById('sub-tab-merchants').style.color = tab === 'merchants' ? 'var(--color-text-primary)' : 'var(--color-text-secondary)';
+            document.getElementById('sub-tab-members').style.borderBottom = tab === 'members' ? '2px solid #BE52EF' : 'none';
+            document.getElementById('sub-tab-members').style.color = tab === 'members' ? 'var(--color-text-primary)' : 'var(--color-text-secondary)';
+        }
+
+        async function loadSubscriptions() {
+            try {
+                const [stats, mData, mbData] = await Promise.all([
+                    MP.api('/api/v1/admin/stats'),
+                    MP.api('/api/v1/admin/merchants?per_page=500'),
+                    MP.api('/api/v1/admin/members?per_page=500'),
+                ]);
+
+                const s = stats;
+                const trialConversion = s.merchants.total > 0 ? Math.round(s.merchants.active / s.merchants.total * 100) : 0;
+                const failedPayments = 0; // would come from real data
+
+                document.getElementById('sub-stats').innerHTML = `
+                    <div class="a-stat"><div class="a-stat__value" style="color:#047857;">${s.merchants.active}</div><div class="a-stat__label">تجار نشطين</div></div>
+                    <div class="a-stat"><div class="a-stat__value" style="color:#C9A84C;">${s.merchants.trial}</div><div class="a-stat__label">فترة تجربة</div></div>
+                    <div class="a-stat"><div class="a-stat__value">${(mbData.members||[]).filter(m=>m.status==='active').length}</div><div class="a-stat__label">أعضاء نشطين</div></div>
+                    <div class="a-stat"><div class="a-stat__value" style="color:#047857;">${s.revenue.mrr.toLocaleString('en-US')}</div><div class="a-stat__label">MRR (ر.س)</div></div>
+                    <div class="a-stat"><div class="a-stat__value">${trialConversion}%</div><div class="a-stat__label">تحويل التجربة</div></div>
+                    <div class="a-stat"><div class="a-stat__value" style="color:#EF4444;">${s.merchants.cancelled}</div><div class="a-stat__label">ملغى</div></div>`;
+
+                subMerchants = mData.merchants || [];
+                subMembers = mbData.members || [];
+
+                // Populate store dropdown for member filter
+                const stores = new Map();
+                subMembers.forEach(m => { if (m.store_name && !stores.has(m.merchant_id)) stores.set(m.merchant_id, m.store_name); });
+                const storeSelect = document.getElementById('sf-mbstore');
+                storeSelect.innerHTML = '<option value="">كل المتاجر</option>';
+                stores.forEach((name, id) => storeSelect.innerHTML += '<option value="'+id+'">'+name+'</option>');
+
+                filterSubMerchants();
+                filterSubMembers();
+            } catch(_) {}
+        }
+
+        function filterSubMerchants() {
+            let f = subMerchants;
+            const status = document.getElementById('sf-mstatus').value;
+            const plan = document.getElementById('sf-mplan').value;
+            const search = (document.getElementById('sf-msearch').value||'').trim().toLowerCase();
+            if (status) f = f.filter(m => m.status === status);
+            if (plan) f = f.filter(m => m.our_plan === plan);
+            if (search) f = f.filter(m => (m.store_name||'').toLowerCase().includes(search) || String(m.salla_store_id).includes(search));
+            subMPager.setItems(f);
+            renderSubMerchants(subMPager.getPage());
+            subMPager.render(document.getElementById('sub-m-pg'));
+        }
+
+        function renderSubMerchants(rows) {
+            document.getElementById('sub-m-tbody').innerHTML = rows.length ? rows.map(m => {
+                const lastEvent = m.setup_completed ? 'إعداد مكتمل' : 'بانتظار الإعداد';
+                return `<tr onclick="openMerchant('${m.id}')">
+                    <td><strong>${m.store_name||'—'}</strong><div style="font-size:11px;color:var(--color-text-secondary);">#${m.salla_store_id}</div></td>
+                    <td><span class="pp pp--${m.our_plan||'starter'}">${m.our_plan||'—'}</span></td>
+                    <td><span class="s-dot s-dot--${m.status}"></span>${sLabels[m.status]||m.status}</td>
+                    <td style="font-size:var(--font-size-xs);">${fmtDate(m.created_at)}</td>
+                    <td style="font-size:var(--font-size-xs);">${m.trial_ends_at ? fmtDate(m.trial_ends_at) : '—'}</td>
+                    <td style="font-weight:600;">${m.member_count}</td>
+                    <td style="font-size:var(--font-size-xs);color:var(--color-text-secondary);">${lastEvent}</td>
+                </tr>`;
+            }).join('') : '<tr><td colspan="7" style="text-align:center;padding:var(--space-8);color:var(--color-text-secondary);">لا يوجد اشتراكات</td></tr>';
+        }
+
+        function filterSubMembers() {
+            let f = subMembers;
+            const store = document.getElementById('sf-mbstore').value;
+            const status = document.getElementById('sf-mbstatus').value;
+            const tier = document.getElementById('sf-mbtier').value;
+            const search = (document.getElementById('sf-mbsearch').value||'').trim().toLowerCase();
+            if (store) f = f.filter(m => m.merchant_id === store);
+            if (status) f = f.filter(m => m.status === status);
+            if (tier) f = f.filter(m => m.tier === tier);
+            if (search) f = f.filter(m => String(m.salla_customer_id).includes(search) || (m.store_name||'').toLowerCase().includes(search));
+            subMbPager.setItems(f);
+            renderSubMembers(subMbPager.getPage());
+            subMbPager.render(document.getElementById('sub-mb-pg'));
+        }
+
+        function renderSubMembers(rows) {
+            document.getElementById('sub-mb-tbody').innerHTML = rows.length ? rows.map(m => {
+                const totalPaid = parseFloat(m.price) * 3; // mock: assume 3 months average
+                return `<tr>
+                    <td style="font-weight:600;">#${m.salla_customer_id}</td>
+                    <td>${m.store_name||'—'}</td>
+                    <td><span class="pp pp--${m.tier==='gold'?'unlimited':'starter'}">${m.tier==='gold'?'ذهبية':'فضية'}</span></td>
+                    <td><span class="s-dot s-dot--${m.status}"></span>${sLabels[m.status]||m.status}</td>
+                    <td>${m.price} ر.س</td>
+                    <td style="font-size:var(--font-size-xs);">${fmtDate(m.created_at)}</td>
+                    <td style="font-weight:600;color:#047857;">${totalPaid.toLocaleString('en-US')} ر.س</td>
+                </tr>`;
+            }).join('') : '<tr><td colspan="7" style="text-align:center;padding:var(--space-8);color:var(--color-text-secondary);">لا يوجد اشتراكات أعضاء</td></tr>';
+        }
+
+        // ═══ Init ═══
+        checkAuth();
+    </script>
+</body>
+</html>

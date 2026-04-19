@@ -1026,6 +1026,453 @@ async def access_redirect(request: Request, token: str = Query(...), goto: str =
 
 
 # ---------------------------------------------------------------------------
+# Admin Auth — login / logout / session
+# ---------------------------------------------------------------------------
+_admin_sessions = {}  # token → {admin_id, email, role, expires_at}
+
+@app.post("/api/v1/admin/login")
+async def admin_login(payload: dict = Body(...)):
+    """Admin login with email + password."""
+    import hashlib
+    from datetime import datetime, timedelta
+    email = (payload.get("email") or "").strip().lower()
+    password = payload.get("password") or ""
+
+    if not email or not password:
+        raise HTTPException(400, "Email and password required")
+
+    db = _db_session()
+    try:
+        from database.models import AdminUser
+        admin = db.query(AdminUser).filter(AdminUser.email == email).first()
+
+        if not admin:
+            # Dev convenience: auto-create admin if none exist
+            existing_count = db.query(AdminUser).count()
+            if existing_count == 0 and email and password:
+                admin = AdminUser(
+                    email=email,
+                    password_hash=hashlib.sha256(password.encode()).hexdigest(),
+                    role="admin",
+                )
+                db.add(admin)
+                db.commit()
+                db.refresh(admin)
+            else:
+                raise HTTPException(401, "Invalid credentials")
+
+        # Verify password
+        if admin.password_hash != hashlib.sha256(password.encode()).hexdigest():
+            raise HTTPException(401, "Invalid credentials")
+
+        # Create session token
+        import secrets
+        token = secrets.token_urlsafe(32)
+        _admin_sessions[token] = {
+            "admin_id": admin.id,
+            "email": admin.email,
+            "role": admin.role,
+            "expires_at": (datetime.utcnow() + timedelta(hours=8)).isoformat(),
+        }
+
+        admin.last_login_at = datetime.utcnow()
+        db.commit()
+
+        return {"token": token, "email": admin.email, "role": admin.role}
+    finally:
+        db.close()
+
+
+@app.get("/api/v1/admin/me")
+async def admin_me(request: Request):
+    """Verify admin session."""
+    from datetime import datetime
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    session = _admin_sessions.get(token)
+    if not session:
+        raise HTTPException(401, "Not authenticated")
+    if datetime.fromisoformat(session["expires_at"]) < datetime.utcnow():
+        del _admin_sessions[token]
+        raise HTTPException(401, "Session expired")
+    return {"email": session["email"], "role": session["role"]}
+
+
+@app.post("/api/v1/admin/logout")
+async def admin_logout(request: Request):
+    """Destroy admin session."""
+    token = request.headers.get("Authorization", "").replace("Bearer ", "")
+    _admin_sessions.pop(token, None)
+    return {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# Admin API — internal platform management (PRD §39)
+# ---------------------------------------------------------------------------
+@app.get("/api/v1/admin/stats")
+async def admin_platform_stats():
+    """Platform-wide KPIs for admin dashboard."""
+    db = _db_session()
+    try:
+        from database.models import Merchant, Member, MembershipPlan, WebhookEvent, EmailLog
+
+        total_merchants = db.query(Merchant).count()
+        active_merchants = db.query(Merchant).filter(Merchant.status == "active").count()
+        trial_merchants = db.query(Merchant).filter(Merchant.status == "trial").count()
+        suspended_merchants = db.query(Merchant).filter(Merchant.status == "suspended").count()
+        cancelled_merchants = db.query(Merchant).filter(Merchant.status == "cancelled").count()
+
+        total_members = db.query(Member).count()
+        active_members = db.query(Member).filter(Member.status == "active").count()
+
+        total_revenue = sum(float(m.subscribed_price or 0) for m in db.query(Member).filter(Member.status == "active").all())
+
+        webhooks_total = db.query(WebhookEvent).count()
+
+        plan_counts = {}
+        for plan in ["starter", "pro", "unlimited"]:
+            plan_counts[plan] = db.query(Merchant).filter(Merchant.our_plan == plan).count()
+
+        return {
+            "merchants": {
+                "total": total_merchants,
+                "active": active_merchants,
+                "trial": trial_merchants,
+                "suspended": suspended_merchants,
+                "cancelled": cancelled_merchants,
+            },
+            "members": {
+                "total": total_members,
+                "active": active_members,
+            },
+            "revenue": {
+                "mrr": round(total_revenue, 2),
+            },
+            "plans": plan_counts,
+            "webhooks_processed": webhooks_total,
+        }
+    finally:
+        db.close()
+
+
+@app.get("/api/v1/admin/merchants")
+async def admin_merchant_list(
+    status: str = Query(None),
+    plan: str = Query(None),
+    page: int = Query(1),
+    per_page: int = Query(20),
+):
+    """List all merchants with filters."""
+    db = _db_session()
+    try:
+        from database.models import Merchant, Member
+
+        query = db.query(Merchant)
+        if status:
+            query = query.filter(Merchant.status == status)
+        if plan:
+            query = query.filter(Merchant.our_plan == plan)
+
+        total = query.count()
+        merchants = query.order_by(Merchant.created_at.desc()).offset(
+            (page - 1) * per_page
+        ).limit(per_page).all()
+
+        result = []
+        for m in merchants:
+            member_count = db.query(Member).filter(
+                Member.merchant_id == m.id, Member.status == "active"
+            ).count()
+            result.append({
+                "id": m.id,
+                "salla_store_id": m.salla_store_id,
+                "store_name": m.store_name or "",
+                "status": m.status,
+                "our_plan": m.our_plan,
+                "member_count": member_count,
+                "setup_completed": m.setup_completed,
+                "trial_ends_at": m.trial_ends_at.isoformat() if m.trial_ends_at else None,
+                "created_at": m.created_at.isoformat() if m.created_at else None,
+            })
+
+        return {"merchants": result, "total": total, "page": page}
+    finally:
+        db.close()
+
+
+@app.get("/api/v1/admin/merchants/{merchant_id}")
+async def admin_merchant_detail(merchant_id: str):
+    """Full merchant detail for admin."""
+    db = _db_session()
+    try:
+        from database.models import Merchant, Member, MembershipPlan, WebhookEvent, AdminNote
+
+        m = db.query(Merchant).filter(Merchant.id == merchant_id).first()
+        if not m:
+            raise HTTPException(404, "Merchant not found")
+
+        members = db.query(Member).filter(Member.merchant_id == m.id).all()
+        plans = db.query(MembershipPlan).filter(MembershipPlan.merchant_id == m.id).all()
+        webhooks = db.query(WebhookEvent).filter(WebhookEvent.merchant_id == m.id).order_by(WebhookEvent.created_at.desc()).limit(20).all()
+        notes = db.query(AdminNote).filter(AdminNote.merchant_id == m.id).order_by(AdminNote.created_at.desc()).all()
+
+        active_members = [mb for mb in members if mb.status == "active"]
+        revenue = sum(float(mb.subscribed_price or 0) for mb in active_members)
+
+        return {
+            "merchant": {
+                "id": m.id,
+                "salla_store_id": m.salla_store_id,
+                "store_name": m.store_name,
+                "status": m.status,
+                "our_plan": m.our_plan,
+                "setup_completed": m.setup_completed,
+                "recurring_enabled": m.recurring_enabled,
+                "trial_ends_at": m.trial_ends_at.isoformat() if m.trial_ends_at else None,
+                "activated_at": m.activated_at.isoformat() if m.activated_at else None,
+                "created_at": m.created_at.isoformat() if m.created_at else None,
+                "permanent_access_token": m.permanent_access_token[:8] + "...",
+            },
+            "stats": {
+                "total_members": len(members),
+                "active_members": len(active_members),
+                "cancelled_members": sum(1 for mb in members if mb.status in ("cancelled", "expired")),
+                "monthly_revenue": round(revenue, 2),
+            },
+            "plans": [
+                {"tier": p.tier, "name": p.display_name_ar, "price": str(p.price), "discount": str(p.discount_pct), "shipping": p.free_shipping_uses}
+                for p in plans
+            ],
+            "recent_webhooks": [
+                {"event_type": w.event_type, "status": w.status, "created_at": w.created_at.isoformat() if w.created_at else None}
+                for w in webhooks
+            ],
+            "admin_notes": [
+                {"id": n.id, "note": n.note, "created_at": n.created_at.isoformat() if n.created_at else None}
+                for n in notes
+            ],
+        }
+    finally:
+        db.close()
+
+
+@app.post("/api/v1/admin/merchants/{merchant_id}/notes")
+async def admin_add_note(merchant_id: str, payload: dict = Body(...)):
+    """Add admin note to a merchant."""
+    db = _db_session()
+    try:
+        from database.models import Merchant, AdminNote
+        m = db.query(Merchant).filter(Merchant.id == merchant_id).first()
+        if not m:
+            raise HTTPException(404, "Merchant not found")
+
+        note = AdminNote(
+            admin_user_id="system",
+            merchant_id=merchant_id,
+            note=payload.get("note", ""),
+        )
+        db.add(note)
+        db.commit()
+        return {"status": "ok", "id": note.id}
+    finally:
+        db.close()
+
+
+@app.post("/api/v1/admin/merchants/{merchant_id}/suspend")
+async def admin_suspend_merchant(merchant_id: str):
+    """Suspend a merchant."""
+    db = _db_session()
+    try:
+        from database.models import Merchant
+        m = db.query(Merchant).filter(Merchant.id == merchant_id).first()
+        if not m:
+            raise HTTPException(404, "Merchant not found")
+        m.status = "suspended"
+        db.commit()
+        return {"status": "ok", "merchant_status": "suspended"}
+    finally:
+        db.close()
+
+
+@app.post("/api/v1/admin/merchants/{merchant_id}/reactivate")
+async def admin_reactivate_merchant(merchant_id: str):
+    """Reactivate a suspended merchant."""
+    db = _db_session()
+    try:
+        from database.models import Merchant
+        m = db.query(Merchant).filter(Merchant.id == merchant_id).first()
+        if not m:
+            raise HTTPException(404, "Merchant not found")
+        m.status = "active"
+        db.commit()
+        return {"status": "ok", "merchant_status": "active"}
+    finally:
+        db.close()
+
+
+@app.get("/api/v1/admin/members")
+async def admin_members_list(
+    merchant_id: str = Query(None),
+    status: str = Query(None),
+    tier: str = Query(None),
+    page: int = Query(1),
+    per_page: int = Query(20),
+):
+    """All members across all merchants."""
+    db = _db_session()
+    try:
+        from database.models import Member, MembershipPlan, Merchant
+
+        query = db.query(Member)
+        if merchant_id:
+            query = query.filter(Member.merchant_id == merchant_id)
+        if status:
+            query = query.filter(Member.status == status)
+
+        total = query.count()
+        members = query.order_by(Member.created_at.desc()).offset((page-1)*per_page).limit(per_page).all()
+
+        plan_cache = {}
+        merchant_cache = {}
+        result = []
+        for m in members:
+            if m.plan_id not in plan_cache:
+                plan_cache[m.plan_id] = db.query(MembershipPlan).filter(MembershipPlan.id == m.plan_id).first()
+            if m.merchant_id not in merchant_cache:
+                merchant_cache[m.merchant_id] = db.query(Merchant).filter(Merchant.id == m.merchant_id).first()
+            plan = plan_cache.get(m.plan_id)
+            merchant = merchant_cache.get(m.merchant_id)
+
+            if tier and plan and plan.tier != tier:
+                continue
+
+            result.append({
+                "id": m.id,
+                "salla_customer_id": m.salla_customer_id,
+                "status": m.status,
+                "tier": plan.tier if plan else None,
+                "plan_name": plan.display_name_ar if plan else "",
+                "price": str(m.subscribed_price),
+                "merchant_id": m.merchant_id,
+                "store_name": merchant.store_name if merchant else "",
+                "total_saved": str(m.total_saved_sar),
+                "is_at_risk": m.is_at_risk,
+                "created_at": m.created_at.isoformat() if m.created_at else None,
+            })
+
+        return {"members": result, "total": total, "page": page}
+    finally:
+        db.close()
+
+
+@app.get("/api/v1/admin/emails")
+async def admin_email_list(
+    merchant_id: str = Query(None),
+    email_type: str = Query(None),
+    page: int = Query(1),
+    per_page: int = Query(20),
+):
+    """All sent emails/notifications."""
+    db = _db_session()
+    try:
+        from database.models import EmailLog
+
+        query = db.query(EmailLog)
+        if merchant_id:
+            query = query.filter(EmailLog.merchant_id == merchant_id)
+        if email_type:
+            query = query.filter(EmailLog.email_type == email_type)
+
+        total = query.count()
+        emails = query.order_by(EmailLog.created_at.desc()).offset((page-1)*per_page).limit(per_page).all()
+
+        return {
+            "emails": [
+                {
+                    "id": e.id,
+                    "merchant_id": e.merchant_id,
+                    "member_id": e.member_id,
+                    "email_type": e.email_type,
+                    "recipient_email": e.recipient_email,
+                    "subject": e.subject,
+                    "status": e.status,
+                    "created_at": e.created_at.isoformat() if e.created_at else None,
+                }
+                for e in emails
+            ],
+            "total": total,
+            "page": page,
+        }
+    finally:
+        db.close()
+
+
+@app.get("/api/v1/admin/plans-summary")
+async def admin_plans_summary():
+    """Our SaaS plans with merchant counts."""
+    db = _db_session()
+    try:
+        from database.models import Merchant, Member
+
+        plans = [
+            {"id": "starter", "name": "Starter", "price": 79, "cycle": "شهري", "member_limit": 50},
+            {"id": "pro", "name": "Pro", "price": 149, "cycle": "شهري", "member_limit": 200},
+            {"id": "unlimited", "name": "Unlimited", "price": 249, "cycle": "شهري", "member_limit": None},
+        ]
+
+        for p in plans:
+            merchants = db.query(Merchant).filter(Merchant.our_plan == p["id"], Merchant.status.in_(["active","trial"])).all()
+            p["merchant_count"] = len(merchants)
+            total_members = 0
+            total_revenue = 0
+            for m in merchants:
+                count = db.query(Member).filter(Member.merchant_id == m.id, Member.status == "active").count()
+                total_members += count
+                total_revenue += sum(float(mb.subscribed_price or 0) for mb in db.query(Member).filter(Member.merchant_id == m.id, Member.status == "active").all())
+            p["total_members"] = total_members
+            p["total_revenue"] = round(total_revenue, 2)
+            p["app_revenue"] = p["price"] * p["merchant_count"]
+
+        return {"plans": plans}
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# Notification Preview (dev/merchant)
+# ---------------------------------------------------------------------------
+@app.get("/api/v1/notifications/preview/{template_name}")
+async def preview_notification(template_name: str):
+    """Preview email templates. Returns raw HTML for iframe rendering."""
+    from email_service.service import (
+        welcome_merchant, trial_ending, setup_complete,
+        new_member_joined, payment_failed, monthly_report,
+        customer_interest,
+        member_welcome, member_gift_ready, member_renewal_reminder,
+        member_payment_failed, member_cancelled,
+    )
+    from fastapi.responses import HTMLResponse
+
+    templates = {
+        "merchant-welcome": lambda: welcome_merchant("متجر الأناقة", "#"),
+        "merchant-trial-ending": lambda: trial_ending("متجر الأناقة", 3, "#"),
+        "merchant-setup-complete": lambda: setup_complete("متجر الأناقة", 0, "#"),
+        "merchant-new-member": lambda: new_member_joined("نورة الشمري", "gold", "99.00", "#"),
+        "merchant-payment-failed": lambda: payment_failed("ريم المطيري", "99.00", "#"),
+        "merchant-monthly-report": lambda: monthly_report("متجر الأناقة", {"member_count":12,"revenue":740,"new_members":3,"churn_rate":8.3}, "#"),
+        "merchant-customer-interest": lambda: customer_interest("أحمد الغامدي", "متجر الأناقة", 7, "#"),
+        "member-welcome": lambda: member_welcome("نورة الشمري", "gold", "متجر الأناقة", "#"),
+        "member-gift-ready": lambda: member_gift_ready("نورة الشمري", "خصم 25% على جميع المنتجات", "GIFT-A8F2K3", "April 30, 2026", "متجر الأناقة"),
+        "member-renewal": lambda: member_renewal_reminder("نورة الشمري", "gold", "99.00", "May 10, 2026", "متجر الأناقة"),
+        "member-payment-failed": lambda: member_payment_failed("نورة الشمري", "99.00", "متجر الأناقة"),
+        "member-cancelled": lambda: member_cancelled("نورة الشمري", "gold", "May 10, 2026", "245.50", "متجر الأناقة"),
+    }
+    if template_name not in templates:
+        return {"available": list(templates.keys())}
+    notif = templates[template_name]()
+    return HTMLResponse(content=notif["html"])
+
+
+# ---------------------------------------------------------------------------
 # Dev-only demo login (NOT in production)
 # ---------------------------------------------------------------------------
 import os
