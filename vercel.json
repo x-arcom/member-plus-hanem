@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "outputDirectory": ".",
+  "rewrites": [
+    { "source": "/", "destination": "/frontend/index.html" },
+    { "source": "/api/:path*", "destination": "https://heritage-gem-armoire.ngrok-free.dev/api/:path*" },
+    { "source": "/webhooks/:path*", "destination": "https://heritage-gem-armoire.ngrok-free.dev/webhooks/:path*" },
+    { "source": "/health", "destination": "https://heritage-gem-armoire.ngrok-free.dev/health" },
+    { "source": "/legal/:path*", "destination": "https://heritage-gem-armoire.ngrok-free.dev/legal/:path*" }
+  ],
+  "cleanUrls": false
+}

@@ -59,6 +59,7 @@
         const token = MP.getToken();
         const headers = {
             'Accept': 'application/json',
+            'ngrok-skip-browser-warning': '1',
             ...(opts.body ? { 'Content-Type': 'application/json' } : {}),
             ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
             ...(opts.headers || {}),
