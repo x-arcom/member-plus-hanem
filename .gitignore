@@ -32,3 +32,4 @@ backend/src/app-entrypoint/memberplus_*.db
 *.png
 !frontend/assets/**
 !legal/**
+.vercel
