@@ -1,0 +1,15 @@
+backend/
+legal/
+specs/
+skills-main*/
+*.pdf
+*.md
+*.png
+Dockerfile*
+docker-compose.yml
+render.yaml
+entrypoint.sh
+requirements.txt
+.env*
+.playwright-mcp/
+*.db
