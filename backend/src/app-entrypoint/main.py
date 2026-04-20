@@ -1589,13 +1589,16 @@ if os.getenv("ENVIRONMENT") != "production":
         )
 
         fresh = bool(payload.get("fresh"))
+        # 99999 = populated demo (never wiped). 99998 = onboarding sandbox
+        # (wiped every "fresh" click). This keeps the "existing merchant"
+        # dashboard usable even when viewers click "fresh" repeatedly.
+        target_store_id = 99998 if fresh else 99999
         db = _db_session()
         try:
-            existing = db.query(Merchant).filter(Merchant.salla_store_id == 99999).first()
+            existing = db.query(Merchant).filter(Merchant.salla_store_id == target_store_id).first()
 
             if existing and fresh:
                 mid = existing.id
-                # Wipe child data so wizard starts clean
                 for model in (BenefitEvent, GiftCoupon, FreeShippingCoupon,
                               ActivityLog, InterestRegistration, EmailLog,
                               WebhookEvent, Member):
@@ -1616,10 +1619,10 @@ if os.getenv("ENVIRONMENT") != "production":
 
             now = datetime.utcnow()
             merchant = Merchant(
-                salla_store_id=99999,
+                salla_store_id=target_store_id,
                 access_token=encrypt("demo-tok"),
                 refresh_token=encrypt("demo-ref"),
-                store_name="متجر تجريبي",
+                store_name="متجر تجريبي (onboarding)" if fresh else "متجر تجريبي",
                 status="trial",
                 trial_ends_at=now + timedelta(days=7),
             )
