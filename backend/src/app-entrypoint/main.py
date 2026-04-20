@@ -604,6 +604,57 @@ async def gift_coupons_list(
         db.close()
 
 
+@app.get("/api/v1/merchant/gifts")
+async def merchant_gifts_by_month(merchant_id: str = Depends(require_merchant)):
+    """Aggregated monthly gifts for the promotions page.
+    Groups gift_coupons by month → one entry per month with rollup stats.
+    Status: active (current month, codes generated) | scheduled (future) | expired | paused."""
+    from datetime import datetime
+    db = _db_session()
+    try:
+        from database.models import GiftCoupon
+        rows = db.query(GiftCoupon).filter(GiftCoupon.merchant_id == merchant_id).all()
+        if not rows:
+            return {"gifts": []}
+
+        now = datetime.utcnow()
+        current_month = now.strftime("%Y-%m")
+
+        by_month = {}
+        for c in rows:
+            g = by_month.setdefault(c.month, {
+                "id": c.month,
+                "month": c.month,
+                "desc": c.gift_description_ar or c.gift_description_en or "",
+                "desc_en": c.gift_description_en or "",
+                "gift_type": c.gift_type,
+                "expires": c.expires_at.strftime("%Y-%m-%d") if c.expires_at else None,
+                "eligible": 0,
+                "used": 0,
+                "_statuses": [],
+            })
+            g["eligible"] += 1
+            if c.status == "used":
+                g["used"] += 1
+            g["_statuses"].append(c.status)
+
+        gifts = []
+        for month, g in by_month.items():
+            statuses = g.pop("_statuses")
+            if month > current_month:
+                g["status"] = "scheduled"
+            elif month == current_month:
+                g["status"] = "paused" if all(s == "expired" for s in statuses) else "active"
+            else:
+                g["status"] = "expired"
+            gifts.append(g)
+
+        gifts.sort(key=lambda x: x["month"], reverse=True)
+        return {"gifts": gifts}
+    finally:
+        db.close()
+
+
 @app.post("/api/v1/merchant/gift-coupons/config")
 async def configure_gift(
     payload: dict = Body(...),
@@ -1523,16 +1574,42 @@ async def preview_notification(template_name: str):
 import os
 if os.getenv("ENVIRONMENT") != "production":
     @app.post("/api/v1/auth/demo")
-    async def demo_login():
-        """Creates a test merchant and returns a JWT token. Dev only."""
+    async def demo_login(payload: dict = Body(default={})):
+        """Creates a test merchant and returns a JWT token. Dev only.
+        Pass {"fresh": true} to reset the demo merchant to an un-setup state
+        so the onboarding wizard fires."""
         from datetime import timedelta
         from auth.crypto import encrypt
         from auth.jwt import create_jwt_token
-        from database.models import Merchant
+        from database.models import (
+            Merchant, Member, MembershipPlan, PlanPriceVersion,
+            GiftCoupon, FreeShippingCoupon, BenefitEvent, ActivityLog,
+            InterestRegistration, WebhookEvent, EmailLog,
+        )
 
+        fresh = bool(payload.get("fresh"))
         db = _db_session()
         try:
             existing = db.query(Merchant).filter(Merchant.salla_store_id == 99999).first()
+
+            if existing and fresh:
+                mid = existing.id
+                # Wipe child data so wizard starts clean
+                for model in (BenefitEvent, GiftCoupon, FreeShippingCoupon,
+                              ActivityLog, InterestRegistration, EmailLog,
+                              WebhookEvent, Member):
+                    db.query(model).filter(model.merchant_id == mid).delete(synchronize_session=False)
+                plan_ids = [p.id for p in db.query(MembershipPlan).filter(MembershipPlan.merchant_id == mid).all()]
+                if plan_ids:
+                    db.query(PlanPriceVersion).filter(PlanPriceVersion.plan_id.in_(plan_ids)).delete(synchronize_session=False)
+                    db.query(MembershipPlan).filter(MembershipPlan.merchant_id == mid).delete(synchronize_session=False)
+                existing.setup_completed = False
+                existing.setup_step = 0
+                existing.status = "trial"
+                existing.trial_ends_at = datetime.utcnow() + timedelta(days=7)
+                db.commit()
+                return {"token": create_jwt_token(existing.id), "merchant_id": existing.id, "reset": True}
+
             if existing:
                 return {"token": create_jwt_token(existing.id), "merchant_id": existing.id}
 

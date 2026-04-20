@@ -74,18 +74,21 @@
             <div id="error" class="alert alert--danger" role="alert" hidden></div>
 
             <a class="btn btn--primary btn--block" id="salla-btn"
-               href="http://localhost:8000/api/v1/auth/salla/redirect"
+               href="/api/v1/auth/salla/redirect"
                style="font-size: var(--font-size-lg); padding: var(--space-4);">
                 <span id="salla-label">الدخول عبر سلة</span>
             </a>
 
             <!-- Info text removed per user request -->
 
-            <!-- Dev-only demo: visible only on localhost -->
             <div class="dev-tools" id="dev-tools">
-                <div class="dev-label">Development Only</div>
+                <div class="dev-label">Demo Mode</div>
                 <button class="btn btn--secondary btn--block" id="demo-btn" type="button">
-                    Demo Sign-in
+                    تجربة كتاجر جديد (Onboarding)
+                </button>
+                <button class="btn btn--block" id="demo-existing-btn" type="button"
+                    style="margin-top: var(--space-2); background: transparent; border: 1px solid var(--border);">
+                    دخول كتاجر قائم
                 </button>
             </div>
         </div>
@@ -93,46 +96,37 @@
 
     <script src="app.js"></script>
     <script>
-        // Show dev tools only on localhost
-        if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-            document.getElementById('dev-tools').style.display = 'block';
-        }
+        document.getElementById('dev-tools').style.display = 'block';
 
-        // If already authenticated, redirect to dashboard
         const existingToken = MP.getToken();
         if (existingToken) {
             window.location.href = `dashboard.html?token=${existingToken}`;
         }
 
-        // Demo login (dev only)
-        const demoBtn = document.getElementById('demo-btn');
-        if (demoBtn) {
-            demoBtn.addEventListener('click', async () => {
-                MP.setLoading(demoBtn, true);
-                try {
-                    const data = await MP.api('/api/v1/auth/demo', { method: 'POST', body: '{}' });
-                    if (data && data.token) {
-                        localStorage.setItem('merchant_token', data.token);
-                        window.location.href = `dashboard.html?token=${data.token}`;
-                    }
-                } catch (err) {
-                    // Fallback: try the old OAuth callback
-                    try {
-                        const data = await MP.api('/api/oauth/callback?code=demo&state=ar&mode=json');
-                        if (data && data.token) {
-                            localStorage.setItem('merchant_token', data.token);
-                            window.location.href = `dashboard.html?token=${data.token}`;
-                        }
-                    } catch (e2) {
-                        const el = document.getElementById('error');
-                        el.textContent = MP.errorMessage(err, 'ar');
-                        el.hidden = false;
-                    }
-                } finally {
-                    MP.setLoading(demoBtn, false);
+        async function runDemo(fresh) {
+            const btn = fresh ? document.getElementById('demo-btn') : document.getElementById('demo-existing-btn');
+            MP.setLoading(btn, true);
+            try {
+                const data = await MP.api('/api/v1/auth/demo', {
+                    method: 'POST',
+                    body: JSON.stringify({ fresh }),
+                });
+                if (data && data.token) {
+                    localStorage.setItem('merchant_token', data.token);
+                    const goto = fresh ? 'wizard.html' : 'dashboard.html';
+                    window.location.href = `${goto}?token=${data.token}`;
                 }
-            });
+            } catch (err) {
+                const el = document.getElementById('error');
+                el.textContent = MP.errorMessage(err, 'ar');
+                el.hidden = false;
+            } finally {
+                MP.setLoading(btn, false);
+            }
         }
+
+        document.getElementById('demo-btn').addEventListener('click', () => runDemo(true));
+        document.getElementById('demo-existing-btn').addEventListener('click', () => runDemo(false));
     </script>
 </body>
 </html>
